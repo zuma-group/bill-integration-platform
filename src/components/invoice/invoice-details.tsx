@@ -95,7 +95,7 @@ export function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
           </CardHeader>
           <CardContent>
             <p className="text-lg font-semibold text-primary-text">
-              {formatDate(invoice.invoiceDate)}
+              {invoice.invoiceDate}
             </p>
           </CardContent>
         </Card>
@@ -109,7 +109,7 @@ export function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
           </CardHeader>
           <CardContent>
             <p className="text-lg font-semibold text-primary-text">
-              {formatDate(invoice.dueDate)}
+              {invoice.dueDate || 'Not specified'}
             </p>
             <p className="text-xs text-secondary-text mt-1">
               {invoice.paymentTerms}

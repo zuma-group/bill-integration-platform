@@ -66,13 +66,13 @@ export function InvoiceCard({ invoice, onSync }: InvoiceCardProps) {
           <div className="flex items-center text-sm">
             <Calendar className="w-4 h-4 mr-2 text-secondary-text" />
             <span className="text-secondary-text">Date:</span>
-            <span className="ml-2 font-medium text-primary-text">{formatDate(invoice.invoiceDate)}</span>
+            <span className="ml-2 font-medium text-primary-text">{invoice.invoiceDate}</span>
           </div>
 
           <div className="flex items-center text-sm">
             <Calendar className="w-4 h-4 mr-2 text-secondary-text" />
             <span className="text-secondary-text">Due:</span>
-            <span className="ml-2 font-medium text-primary-text">{formatDate(invoice.dueDate)}</span>
+            <span className="ml-2 font-medium text-primary-text">{invoice.dueDate || 'N/A'}</span>
           </div>
 
           <div className="flex items-center text-sm">

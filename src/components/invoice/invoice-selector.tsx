@@ -114,7 +114,7 @@ export function InvoiceSelector({ invoices, onProcess, onCancel }: InvoiceSelect
                     </div>
                     <div>
                       <span className="text-secondary-text">Date:</span>
-                      <span className="ml-2 text-primary-text">{formatDate(invoice.invoiceDate)}</span>
+                      <span className="ml-2 text-primary-text">{invoice.invoiceDate}</span>
                     </div>
                     <div>
                       <span className="text-secondary-text">Page:</span>

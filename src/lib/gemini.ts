@@ -104,8 +104,8 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
       {
         "invoiceNumber": "string",
         "customerPoNumber": "string" or null (LOOK FOR: PO Number, Purchase Order, Customer PO, Reference Number),
-        "invoiceDate": "YYYY-MM-DD",
-        "dueDate": "YYYY-MM-DD" or null,
+        "invoiceDate": "string (KEEP the EXACT date format as shown on the invoice - do NOT convert)",
+        "dueDate": "string" or null (KEEP the EXACT date format as shown on the invoice - do NOT convert),
         "vendor": {
           "name": "string",
           "address": "string",
