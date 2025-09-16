@@ -67,6 +67,23 @@ export function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
         </div>
       </div>
 
+      {/* Customer PO Number */}
+      {invoice.customerPoNumber && (
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-secondary-text flex items-center gap-2">
+              <Hash className="w-4 h-4" />
+              Customer PO Number
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-lg font-bold text-accent-action">
+              {invoice.customerPoNumber}
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Key Information Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
@@ -212,6 +229,9 @@ export function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-2 text-sm font-semibold text-secondary-text">
+                    Part Number
+                  </th>
+                  <th className="text-left py-3 px-2 text-sm font-semibold text-secondary-text">
                     Description
                   </th>
                   <th className="text-center py-3 px-2 text-sm font-semibold text-secondary-text">
@@ -231,6 +251,9 @@ export function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
               <tbody>
                 {invoice.lineItems.map((item, index) => (
                   <tr key={index} className="border-b hover:bg-accent-hover">
+                    <td className="py-3 px-2 text-sm text-primary-text font-mono">
+                      {item.partNumber || '-'}
+                    </td>
                     <td className="py-3 px-2 text-sm text-primary-text">
                       {item.description}
                     </td>

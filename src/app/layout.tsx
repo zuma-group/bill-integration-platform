@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   description: "Extract invoice data using OCR and sync with Odoo",
 };
 
+// Disable static optimization for this layout
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -17,6 +20,27 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // Remove browser extension attributes that cause hydration issues
+            if (typeof window !== 'undefined') {
+              const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                  if (mutation.type === 'attributes' && mutation.attributeName === 'bis_skin_checked') {
+                    mutation.target.removeAttribute('bis_skin_checked');
+                  }
+                });
+              });
+              observer.observe(document.documentElement, {
+                attributes: true,
+                subtree: true,
+                attributeFilter: ['bis_skin_checked']
+              });
+            }
+          `
+        }} />
+      </head>
       <body className={`${inter.className} bg-primary-bg antialiased`} suppressHydrationWarning>
         <ClientLayout>{children}</ClientLayout>
       </body>

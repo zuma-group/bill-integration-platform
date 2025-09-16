@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Calendar, Building2, FileText, Trash2, Link, Eye } from 'lucide-react';
+import { Calendar, Building2, FileText, Trash2, Link, Eye, Hash } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -54,6 +54,14 @@ export function InvoiceCard({ invoice, onSync }: InvoiceCardProps) {
             <span className="text-secondary-text">Vendor:</span>
             <span className="ml-2 font-medium text-primary-text">{invoice.vendor.name}</span>
           </div>
+
+          {invoice.customerPoNumber && (
+            <div className="flex items-center text-sm">
+              <Hash className="w-4 h-4 mr-2 text-secondary-text" />
+              <span className="text-secondary-text">PO#:</span>
+              <span className="ml-2 font-medium text-accent-action">{invoice.customerPoNumber}</span>
+            </div>
+          )}
 
           <div className="flex items-center text-sm">
             <Calendar className="w-4 h-4 mr-2 text-secondary-text" />

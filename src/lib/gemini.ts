@@ -92,6 +92,10 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
 
   Extract ALL invoices found in the document, regardless of count.
 
+  IMPORTANT: Pay special attention to:
+  - Customer PO Number (also called Purchase Order Number, PO #, Reference Number, or Customer Reference)
+  - Part Numbers for each line item (also called Item Number, SKU, Product Code, Part #, or Item Code)
+
   Return a JSON response with this EXACT structure:
   {
     "documentType": "single" or "multiple",
@@ -99,6 +103,7 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
     "invoices": [
       {
         "invoiceNumber": "string",
+        "customerPoNumber": "string" or null (LOOK FOR: PO Number, Purchase Order, Customer PO, Reference Number),
         "invoiceDate": "YYYY-MM-DD",
         "dueDate": "YYYY-MM-DD" or null,
         "vendor": {
@@ -115,6 +120,7 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
         "lineItems": [
           {
             "description": "string",
+            "partNumber": "string" or null (LOOK FOR: Part Number, Item Number, SKU, Product Code, Part #, Item #),
             "quantity": number,
             "unitPrice": number,
             "amount": number,

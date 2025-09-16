@@ -13,6 +13,7 @@ export interface Customer {
 
 export interface LineItem {
   description: string;
+  partNumber?: string;
   quantity: number;
   unitPrice: number;
   amount: number;
@@ -22,6 +23,7 @@ export interface LineItem {
 export interface Invoice {
   id?: string;
   invoiceNumber: string;
+  customerPoNumber?: string;
   invoiceDate: string;
   dueDate: string;
   vendor: Vendor;
@@ -46,8 +48,10 @@ export interface OdooRecord {
   invoice_date: string;
   invoice_date_due: string;
   ref: string;
+  customer_po?: string;
   invoice_line_ids: Array<{
     name: string;
+    product_ref?: string;
     quantity: number;
     price_unit: number;
     price_subtotal: number;

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractInvoiceData } from '@/lib/gemini';
 
+// Explicitly use Node.js runtime for PDF processing
+export const runtime = 'nodejs';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -19,12 +22,19 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('OCR API error - FULL DETAILS:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-    return NextResponse.json(
-      {
+
+    // ALWAYS return JSON, never let HTML error pages leak through
+    return new Response(
+      JSON.stringify({
         error: `OCR Processing Failed: ${errorMessage}`,
-        details: error instanceof Error ? error.stack : undefined
-      },
-      { status: 500 }
+        details: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.stack : undefined : undefined
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
     );
   }
 }

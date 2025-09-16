@@ -18,7 +18,12 @@ const steps: {
 ];
 
 export function PipelineVisual() {
+  const [mounted, setMounted] = React.useState(false);
   const pipelineSteps = useInvoiceStore((state) => state.pipelineSteps);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const getStatusColor = (status: PipelineStatus) => {
     switch (status) {
@@ -58,7 +63,9 @@ export function PipelineVisual() {
                 </div>
                 <div className="text-center">
                   <div className="font-medium text-sm text-primary-text">{step.title}</div>
-                  <div className="text-xs text-secondary-text mt-1">{stepData.message}</div>
+                  <div className="text-xs text-secondary-text mt-1">
+                    {mounted ? stepData.message : 'Waiting'}
+                  </div>
                 </div>
               </div>
 

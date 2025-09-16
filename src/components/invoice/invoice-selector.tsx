@@ -97,6 +97,11 @@ export function InvoiceSelector({ invoices, onProcess, onCancel }: InvoiceSelect
                     <span className="font-semibold text-primary-text">
                       {invoice.invoiceNumber}
                     </span>
+                    {invoice.customerPoNumber && (
+                      <span className="text-sm text-accent-action font-medium">
+                        PO# {invoice.customerPoNumber}
+                      </span>
+                    )}
                     <Badge variant="warning" size="sm">
                       BATCH {index + 1}/{invoices.length}
                     </Badge>
