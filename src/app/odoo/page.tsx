@@ -13,7 +13,7 @@ export default function OdooPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this Odoo record?')) {

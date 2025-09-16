@@ -30,7 +30,7 @@ export default function HomePage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const handleFileDrop = async (files: File[]) => {
     if (files.length === 0) return;

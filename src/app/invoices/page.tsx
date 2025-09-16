@@ -12,7 +12,7 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   const extractedInvoices = invoices.filter(inv => inv.status === 'extracted');
 

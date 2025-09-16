@@ -6,7 +6,6 @@ import {
   Calendar,
   Building2,
   User,
-  CreditCard,
   Hash,
   Mail,
   Phone,

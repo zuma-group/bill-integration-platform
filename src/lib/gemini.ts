@@ -1,4 +1,4 @@
-import { OCRResponse, Invoice } from '@/types';
+import { OCRResponse } from '@/types';
 
 // Attempts to repair truncated JSON by closing open structures
 function attemptJsonRepair(truncatedJson: string): string {
@@ -79,14 +79,15 @@ function attemptJsonRepair(truncatedJson: string): string {
   return repaired;
 }
 
-const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-
-if (!GEMINI_API_KEY) {
-  throw new Error('GEMINI_API_KEY is not configured! Please set NEXT_PUBLIC_GEMINI_API_KEY in your .env.local file');
-}
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 export async function extractInvoiceData(base64: string, mimeType: string): Promise<OCRResponse> {
+  const GEMINI_API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+  if (!GEMINI_API_KEY) {
+    throw new Error('GEMINI_API_KEY is not configured! Please set NEXT_PUBLIC_GEMINI_API_KEY in your environment variables');
+  }
+
   const prompt = `Extract invoice data from this document.
 
   Extract ALL invoices found in the document, regardless of count.
@@ -216,7 +217,7 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
       console.log(`Successfully extracted ${invoiceData.invoices.length} invoices from document`);
 
       return invoiceData as OCRResponse;
-    } catch (parseError) {
+    } catch {
       // Try to repair truncated JSON
       console.error('JSON parse failed, attempting repair...');
 
@@ -226,7 +227,7 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
 
         console.warn('Successfully repaired truncated JSON response');
         return invoiceData as OCRResponse;
-      } catch (repairError) {
+      } catch {
         throw new Error(
           `Failed to parse Gemini response. The response appears to be truncated or invalid JSON. ` +
           `This often happens with documents containing too many invoices (found ${extractedText.includes('"invoiceCount":') ?
