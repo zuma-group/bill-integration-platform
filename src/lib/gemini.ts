@@ -92,9 +92,12 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
 
   Extract ALL invoices found in the document, regardless of count.
 
+  CRITICAL EXTRACTION RULES:
+  1. Customer PO Number vs Line Item PO: These are DIFFERENT. The customer PO is in the invoice header (often in a table with Account #, PST #, Order #, Clerk, etc.). Line items may have their own "Purchase Order" which is NOT the customer PO.
+
   IMPORTANT: Pay special attention to:
-  - Customer PO Number (also called Purchase Order Number, PO #, Reference Number, or Customer Reference)
-  - Part Numbers for each line item (also called Item Number, SKU, Product Code, Part #, or Item Code)
+  - Customer PO Number: This is typically found in the invoice header/details section (NOT in line items). Look for labels like: PO Number, Purchase Order, Customer PO, Reference Number, Order #, Order Number, Order No, Ord #, Ord No, or just "Order". In the header information table, if you see "Order #" with a value, that's the customer PO number.
+  - Part Numbers for each line item (also called Item Number, SKU, Product Code, Part #, Item Code, or Item #)
 
   Return a JSON response with this EXACT structure:
   {
@@ -103,7 +106,7 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
     "invoices": [
       {
         "invoiceNumber": "string",
-        "customerPoNumber": "string" or null (LOOK FOR: PO Number, Purchase Order, Customer PO, Reference Number),
+        "customerPoNumber": "string" or null (Extract from HEADER section - Look for: Order #, PO Number, Purchase Order, Customer PO, Reference Number, Order Number, etc. DO NOT confuse with line item purchase orders),
         "invoiceDate": "string (KEEP the EXACT date format as shown on the invoice - do NOT convert)",
         "dueDate": "string" or null (KEEP the EXACT date format as shown on the invoice - do NOT convert),
         "vendor": {
