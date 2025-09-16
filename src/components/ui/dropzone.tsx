@@ -31,7 +31,8 @@ export function Dropzone({
     const validFiles = acceptedFiles.filter(file => {
       const validation = validateFile(file);
       if (!validation.valid) {
-        console.error(validation.error);
+        console.error('FILE VALIDATION FAILED:', validation.error);
+        alert(`File validation failed:\n${validation.error}`);
         return false;
       }
       return true;
@@ -39,6 +40,8 @@ export function Dropzone({
 
     if (validFiles.length > 0) {
       onDrop(validFiles);
+    } else if (acceptedFiles.length > 0) {
+      alert('No valid files to process. Check file size and type.');
     }
   }, [onDrop]);
 

@@ -1,10 +1,12 @@
 'use client';
 
-import React from 'react';
-import { Calendar, Building2, DollarSign, FileText, Trash2, Link } from 'lucide-react';
+import React, { useState } from 'react';
+import { Calendar, Building2, FileText, Trash2, Link, Eye } from 'lucide-react';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
+import { InvoiceDetails } from './invoice-details';
 import { Invoice } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useInvoiceStore } from '@/store/invoice-store';
@@ -16,6 +18,7 @@ interface InvoiceCardProps {
 
 export function InvoiceCard({ invoice, onSync }: InvoiceCardProps) {
   const { deleteInvoice, syncToOdoo } = useInvoiceStore();
+  const [showDetails, setShowDetails] = useState(false);
 
   const handleSync = () => {
     if (invoice.id) {
@@ -33,8 +36,9 @@ export function InvoiceCard({ invoice, onSync }: InvoiceCardProps) {
   };
 
   return (
-    <Card variant="elevated" className="hover:shadow-lg transition-all duration-200">
-      <CardHeader>
+    <>
+      <Card variant="elevated" className="hover:shadow-lg transition-all duration-200">
+        <CardHeader>
         <div className="flex justify-between items-start">
           <CardTitle className="text-lg">{invoice.invoiceNumber}</CardTitle>
           <Badge variant={invoice.status === 'synced' ? 'success' : 'warning'}>
@@ -89,6 +93,14 @@ export function InvoiceCard({ invoice, onSync }: InvoiceCardProps) {
       </CardContent>
 
       <CardFooter className="flex gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={Eye}
+          onClick={() => setShowDetails(true)}
+        >
+          View
+        </Button>
         {invoice.status === 'extracted' ? (
           <Button
             variant="primary"
@@ -114,5 +126,15 @@ export function InvoiceCard({ invoice, onSync }: InvoiceCardProps) {
         </Button>
       </CardFooter>
     </Card>
+
+    <Modal
+      isOpen={showDetails}
+      onClose={() => setShowDetails(false)}
+      title="Invoice Details"
+      size="xl"
+    >
+      <InvoiceDetails invoice={invoice} />
+    </Modal>
+    </>
   );
 }

@@ -17,9 +17,13 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(ocrResponse);
   } catch (error) {
-    console.error('OCR API error:', error);
+    console.error('OCR API error - FULL DETAILS:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return NextResponse.json(
-      { error: 'Failed to process invoice' },
+      {
+        error: `OCR Processing Failed: ${errorMessage}`,
+        details: error instanceof Error ? error.stack : undefined
+      },
       { status: 500 }
     );
   }

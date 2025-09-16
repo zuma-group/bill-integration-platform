@@ -24,10 +24,21 @@ export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
-      const base64 = reader.result as string;
-      resolve(base64.split(',')[1]);
+      const result = reader.result as string;
+      if (!result) {
+        reject(new Error('Failed to read file - result is empty'));
+        return;
+      }
+      const base64Parts = result.split(',');
+      if (base64Parts.length !== 2) {
+        reject(new Error('Invalid base64 format - expected data URL'));
+        return;
+      }
+      resolve(base64Parts[1]);
     };
-    reader.onerror = reject;
+    reader.onerror = () => {
+      reject(new Error(`Failed to read file: ${reader.error?.message || 'Unknown error'}`));
+    };
     reader.readAsDataURL(file);
   });
 }

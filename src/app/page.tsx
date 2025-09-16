@@ -57,10 +57,23 @@ export default function HomePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to process invoice');
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: Failed to process invoice`);
       }
 
       const ocrData: OCRResponse = await response.json();
+
+      // Validate response structure
+      if (!ocrData.invoices || !Array.isArray(ocrData.invoices)) {
+        throw new Error('Invalid response from OCR: missing or invalid invoices array');
+      }
+
+      if (ocrData.invoices.length === 0) {
+        throw new Error('No invoices found in the document. Please ensure the file contains valid invoice data.');
+      }
+
+      // Log successful extraction
+      console.log(`Successfully extracted ${ocrData.invoices.length} invoices from document`);
       updatePipelineStep('ocr', 'completed', 'Extracted');
 
       // Step 3: Processing
@@ -91,8 +104,32 @@ export default function HomePage() {
       setSuccess(`Successfully extracted ${ocrData.invoiceCount} invoice(s)`);
     } catch (err) {
       console.error('Error processing file:', err);
-      setError(err instanceof Error ? err.message : 'Failed to process file');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to process file';
+
+      // Check if it's a temporary service issue
+      if (errorMessage.includes('503') || errorMessage.includes('Service Unavailable')) {
+        setError(`⚠️ Service Temporarily Unavailable: The Gemini API is currently overloaded or down. Please wait a moment and try again.`);
+        alert('The OCR service is temporarily unavailable.\n\nThis is usually temporary - please wait 30 seconds and try again.\n\nIf the problem persists, the service may be experiencing high load.');
+      } else if (errorMessage.includes('429') || errorMessage.includes('Rate Limit')) {
+        setError(`⏱️ Rate Limit: Too many requests. Please wait a minute before trying again.`);
+        alert('Rate limit reached!\n\nPlease wait 60 seconds before uploading another invoice.');
+      } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        setError(`🔑 API Key Error: ${errorMessage}`);
+        alert('API Key Error!\n\nYour Gemini API key appears to be invalid.\n\nPlease check your .env.local file.');
+      } else if (errorMessage.includes('truncated') || errorMessage.includes('too many invoices')) {
+        setError(`📄 Processing Error: The response was truncated. Please try again.`);
+        alert(
+          '⚠️ Processing Error!\n\n' +
+          'The API response was truncated. This can happen with very large documents.\n\n' +
+          'Please try uploading the document again.'
+        );
+      } else {
+        setError(`❌ Error: ${errorMessage}`);
+        alert(`Failed to process invoice:\n\n${errorMessage}`);
+      }
+
       resetPipeline();
+      console.error('Full error details:', err);
     } finally {
       setIsProcessing(false);
     }

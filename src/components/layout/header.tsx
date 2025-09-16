@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { FileText, TrendingUp, CheckCircle, DollarSign } from 'lucide-react';
+import { FileText, TrendingUp, CheckCircle, Coins } from 'lucide-react';
 import { useInvoiceStore } from '@/store/invoice-store';
 import { formatCurrency } from '@/lib/utils';
 
@@ -64,8 +64,8 @@ export function Header() {
     },
     {
       label: 'Total Value',
-      value: mounted ? formatCurrency(stats.totalValue) : '$0',
-      icon: DollarSign,
+      value: mounted ? formatCurrency(stats.totalValue) : '',
+      icon: Coins,
       color: 'text-accent-action',
     },
   ];
