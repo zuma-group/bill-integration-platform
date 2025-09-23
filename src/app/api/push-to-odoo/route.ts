@@ -102,8 +102,8 @@ export async function POST(request: NextRequest) {
         console.log('Payload size:', (payloadStr.length / 1024).toFixed(2), 'KB');
 
         // Log a sample of the payload (without the full base64 content)
-        const debugPayload = JSON.parse(JSON.stringify(odooPayload));
-        debugPayload.invoices.forEach(inv => {
+        const debugPayload = JSON.parse(JSON.stringify(odooPayload)) as OdooBillPayload;
+        debugPayload.invoices.forEach((inv: any) => {
           if (inv.attachments && inv.attachments[0]?.content) {
             inv.attachments[0].content = `[BASE64 DATA - ${inv.attachments[0].content.length} chars]`;
           }
