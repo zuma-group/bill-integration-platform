@@ -118,9 +118,11 @@ export interface OdooBillPayload {
     "Invoice-No": string;
     "Invoice-Date": string;
     "Customer PO Number": string;
-    "Vendor": string;  // The supplier/vendor issuing the bill
+    "Vendor": string;  // The supplier/vendor name
+    "Vendor Address"?: string;  // The vendor address
     "Vendor No"?: string;
-    "Bill-To"?: string;  // The customer receiving the bill (optional)
+    "Bill-To"?: string;  // The customer name
+    "Bill-To Address"?: string;  // The customer address
     "Payment Terms": string;
     "Subtotal": string;
     "Tax Amount": string;

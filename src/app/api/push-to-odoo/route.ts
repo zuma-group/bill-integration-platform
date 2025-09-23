@@ -48,9 +48,11 @@ export async function POST(request: NextRequest) {
           "Invoice-No": invoice.invoiceNumber,
           "Invoice-Date": invoice.invoiceDate,
           "Customer PO Number": invoice.customerPoNumber || "",
-          "Vendor": `${invoice.vendor.name}\n${invoice.vendor.address}`,  // The supplier issuing the bill
+          "Vendor": invoice.vendor.name,  // Just the vendor name
+          "Vendor Address": invoice.vendor.address,  // Separate address field
           "Vendor No": invoice.vendor.taxId || "", // Use tax ID as vendor number
-          "Bill-To": `${invoice.customer.name}\n${invoice.customer.address}`, // The recipient of the bill
+          "Bill-To": invoice.customer.name, // Just the customer name
+          "Bill-To Address": invoice.customer.address, // Separate address field
           "Payment Terms": invoice.paymentTerms || "NET 30 DAYS",
           "Subtotal": invoice.subtotal.toFixed(2),
           "Tax Amount": invoice.taxAmount.toFixed(2),
