@@ -1,4 +1,5 @@
 import { OCRResponse } from '@/types';
+import { generateTaskId } from '@/lib/pdf-splitter';
 
 // Attempts to repair truncated JSON by closing open structures
 function attemptJsonRepair(truncatedJson: string): string {
@@ -94,10 +95,12 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
 
   CRITICAL EXTRACTION RULES:
   1. Customer PO Number vs Line Item PO: These are DIFFERENT. The customer PO is in the invoice header (often in a table with Account #, PST #, Order #, Clerk, etc.). Line items may have their own "Purchase Order" which is NOT the customer PO.
+  2. For multi-page invoices: Track ALL page numbers where each invoice appears (e.g., if invoice spans pages 1-3, include [1,2,3])
 
   IMPORTANT: Pay special attention to:
   - Customer PO Number: This is typically found in the invoice header/details section (NOT in line items). Look for labels like: PO Number, Purchase Order, Customer PO, Reference Number, Order #, Order Number, Order No, Ord #, Ord No, or just "Order". In the header information table, if you see "Order #" with a value, that's the customer PO number.
   - Part Numbers for each line item (also called Item Number, SKU, Product Code, Part #, Item Code, or Item #)
+  - Page numbers: Track which pages each invoice appears on
 
   Return a JSON response with this EXACT structure:
   {
@@ -135,7 +138,8 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
         "total": number,
         "currency": "string",
         "paymentTerms": "string" or null,
-        "pageNumber": number
+        "pageNumber": number (first page where invoice starts),
+        "pageNumbers": [array of all page numbers this invoice spans] or null
       }
     ]
   }
@@ -225,7 +229,13 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
       // Log the number of invoices extracted
       console.log(`Successfully extracted ${invoiceData.invoices.length} invoices from document`);
 
-      return invoiceData as OCRResponse;
+      // Add a taskId to track this extraction
+      const taskId = generateTaskId();
+
+      return {
+        ...invoiceData,
+        taskId
+      } as OCRResponse;
     } catch {
       // Try to repair truncated JSON
       console.error('JSON parse failed, attempting repair...');

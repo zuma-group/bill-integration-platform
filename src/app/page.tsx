@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useInvoiceStore } from '@/store/invoice-store';
 import { fileToBase64, getMimeType, generateId } from '@/lib/utils';
 import { Invoice, OCRResponse } from '@/types';
-import { AlertCircle, CheckCircle, Link } from 'lucide-react';
+import { AlertCircle, CheckCircle, Link, Send } from 'lucide-react';
 
 export default function HomePage() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -18,6 +18,8 @@ export default function HomePage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [extractedInvoices, setExtractedInvoices] = useState<Invoice[] | null>(null);
   const [showSelector, setShowSelector] = useState(false);
+  const [originalPdfBase64, setOriginalPdfBase64] = useState<string | null>(null);
+  const [isPushingToOdoo, setIsPushingToOdoo] = useState(false);
 
   const {
     loadData,
@@ -46,6 +48,7 @@ export default function HomePage() {
       updatePipelineStep('upload', 'active', 'Uploading...');
       const base64 = await fileToBase64(file);
       const mimeType = getMimeType(file);
+      setOriginalPdfBase64(base64); // Store for Odoo push
       updatePipelineStep('upload', 'completed', 'Uploaded');
 
       // Step 2: OCR
@@ -86,6 +89,7 @@ export default function HomePage() {
         status: 'extracted' as const,
         extractedAt: new Date().toISOString(),
         batchId: ocrData.documentType === 'multiple' ? generateId() : undefined,
+        taskId: ocrData.taskId, // Include taskId from OCR response
       }));
 
       updatePipelineStep('processing', 'completed', 'Processed');
@@ -155,6 +159,43 @@ export default function HomePage() {
     setSuccess('Successfully synced all invoices to Odoo');
   };
 
+  const handlePushToOdoo = async () => {
+    if (!extractedInvoices || !originalPdfBase64) return;
+
+    setIsPushingToOdoo(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/push-to-odoo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoices: extractedInvoices,
+          originalPdfBase64,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to push to Odoo');
+      }
+
+      const result = await response.json();
+      setSuccess(`Successfully pushed ${result.invoiceCount} invoice(s) to Odoo. Task ID: ${result.taskId}`);
+
+      // Mark invoices as synced
+      const invoiceIds = extractedInvoices.map(inv => inv.id || '');
+      syncToOdoo(invoiceIds);
+      setExtractedInvoices(null);
+      setOriginalPdfBase64(null);
+    } catch (err) {
+      console.error('Error pushing to Odoo:', err);
+      setError(`Failed to push to Odoo: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsPushingToOdoo(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* File Upload */}
@@ -192,13 +233,23 @@ export default function HomePage() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle>Extracted Invoice Data</CardTitle>
-              <Button
-                variant="primary"
-                icon={Link}
-                onClick={handleSyncAll}
-              >
-                Sync All to Odoo
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="primary"
+                  icon={Send}
+                  onClick={handlePushToOdoo}
+                  disabled={isPushingToOdoo}
+                >
+                  {isPushingToOdoo ? 'Pushing...' : 'Push to Odoo'}
+                </Button>
+                <Button
+                  variant="outline"
+                  icon={Link}
+                  onClick={handleSyncAll}
+                >
+                  Save Locally
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
