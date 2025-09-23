@@ -7,10 +7,11 @@ import { InvoiceSelector } from '@/components/invoice/invoice-selector';
 import { InvoiceCard } from '@/components/invoice/invoice-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Modal } from '@/components/ui/modal';
 import { useInvoiceStore } from '@/store/invoice-store';
 import { fileToBase64, getMimeType, generateId } from '@/lib/utils';
 import { Invoice, OCRResponse } from '@/types';
-import { AlertCircle, CheckCircle, Link, Send } from 'lucide-react';
+import { AlertCircle, CheckCircle, Link, Send, Trash2, TestTube } from 'lucide-react';
 
 export default function HomePage() {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -20,6 +21,8 @@ export default function HomePage() {
   const [showSelector, setShowSelector] = useState(false);
   const [originalPdfBase64, setOriginalPdfBase64] = useState<string | null>(null);
   const [isPushingToOdoo, setIsPushingToOdoo] = useState(false);
+  const [showResponseModal, setShowResponseModal] = useState(false);
+  const [odooResponseDetails, setOdooResponseDetails] = useState<any>(null);
 
   const {
     loadData,
@@ -162,6 +165,10 @@ export default function HomePage() {
   const handlePushToOdoo = async () => {
     if (!extractedInvoices || !originalPdfBase64) return;
 
+    console.log('🚀 Starting push to Odoo...');
+    console.log('Number of invoices:', extractedInvoices.length);
+    console.log('Invoice numbers:', extractedInvoices.map(inv => inv.invoiceNumber));
+
     setIsPushingToOdoo(true);
     setError(null);
 
@@ -175,24 +182,79 @@ export default function HomePage() {
         }),
       });
 
+      const result = await response.json();
+      console.log('📥 Response from server:', result);
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to push to Odoo');
+        console.error('❌ Server returned error:', result);
+        throw new Error(result.error || 'Failed to push to Odoo');
       }
 
-      const result = await response.json();
-      setSuccess(`Successfully pushed ${result.invoiceCount} invoice(s) to Odoo. Task ID: ${result.taskId}`);
+      // Store response details for modal
+      setOdooResponseDetails(result);
 
-      // Mark invoices as synced
-      const invoiceIds = extractedInvoices.map(inv => inv.id || '');
-      syncToOdoo(invoiceIds);
-      setExtractedInvoices(null);
-      setOriginalPdfBase64(null);
+      // Check if actually sent to Odoo
+      if (result.message.includes('webhook not configured')) {
+        console.warn('⚠️ Webhook not configured - data prepared but not sent');
+        setError('Odoo webhook not configured on server. Data prepared but not sent.');
+      } else {
+        console.log('✅ Data sent to Odoo webhook');
+        console.log('Webhook URL used:', process.env.NEXT_PUBLIC_BASE_URL ? 'Configured' : 'Not visible in client');
+        console.log('Odoo response:', result.odooResponse || 'No response from Odoo');
+
+        setSuccess(`Successfully pushed ${result.invoiceCount} invoice(s) to Odoo. Task ID: ${result.taskId}`);
+
+        // Mark invoices as synced only if actually sent
+        const invoiceIds = extractedInvoices.map(inv => inv.id || '');
+        syncToOdoo(invoiceIds);
+        setExtractedInvoices(null);
+        setOriginalPdfBase64(null);
+      }
+
+      // Show response details modal
+      setShowResponseModal(true);
     } catch (err) {
-      console.error('Error pushing to Odoo:', err);
+      console.error('❌ Error pushing to Odoo:', err);
       setError(`Failed to push to Odoo: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsPushingToOdoo(false);
+    }
+  };
+
+  const handleClearAll = () => {
+    if (confirm('Are you sure you want to clear all extracted invoices? This cannot be undone.')) {
+      console.log('🗑️ Clearing all extracted invoices');
+      setExtractedInvoices(null);
+      setOriginalPdfBase64(null);
+      setShowSelector(false);
+      resetPipeline();
+      setSuccess('All extracted invoices cleared');
+    }
+  };
+
+  const handleTestConnection = async () => {
+    console.log('🧪 Testing Odoo connection...');
+    setError(null);
+
+    try {
+      const response = await fetch('/api/push-to-odoo');
+      const result = await response.json();
+
+      console.log('Test response:', result);
+
+      // Show connection info
+      const testInfo = {
+        message: 'Connection test completed',
+        webhookConfigured: !!process.env.NEXT_PUBLIC_BASE_URL,
+        baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'Not set',
+        info: result
+      };
+
+      setOdooResponseDetails(testInfo);
+      setShowResponseModal(true);
+    } catch (err) {
+      console.error('Test failed:', err);
+      setError('Failed to test connection');
     }
   };
 
@@ -249,6 +311,13 @@ export default function HomePage() {
                 >
                   Save Locally
                 </Button>
+                <Button
+                  variant="danger"
+                  icon={Trash2}
+                  onClick={handleClearAll}
+                >
+                  Clear All
+                </Button>
               </div>
             </div>
           </CardHeader>
@@ -280,6 +349,69 @@ export default function HomePage() {
           {success}
         </div>
       )}
+
+      {/* Test Connection Button */}
+      <div className="fixed bottom-4 right-4">
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={TestTube}
+          onClick={handleTestConnection}
+        >
+          Test Odoo Connection
+        </Button>
+      </div>
+
+      {/* Response Details Modal */}
+      <Modal
+        isOpen={showResponseModal}
+        onClose={() => setShowResponseModal(false)}
+        title="Odoo Push Details"
+        size="xl"
+      >
+        <div className="space-y-4">
+          {odooResponseDetails && (
+            <>
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="font-semibold mb-2">Response Summary</h4>
+                <pre className="text-xs overflow-auto max-h-96">
+                  {JSON.stringify(odooResponseDetails, null, 2)}
+                </pre>
+              </div>
+
+              {odooResponseDetails.attachmentUrls && (
+                <div>
+                  <h4 className="font-semibold mb-2">Attachment URLs Generated</h4>
+                  <ul className="list-disc list-inside text-sm">
+                    {odooResponseDetails.attachmentUrls.map((url: string, idx: number) => (
+                      <li key={idx} className="text-blue-600">{url}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {odooResponseDetails.odooResponse && (
+                <div className="bg-green-50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2">Odoo Response</h4>
+                  <pre className="text-xs">
+                    {JSON.stringify(odooResponseDetails.odooResponse, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {!odooResponseDetails.odooResponse && (
+                <div className="bg-yellow-50 p-4 rounded-lg">
+                  <h4 className="font-semibold mb-2 text-yellow-800">⚠️ No Response from Odoo</h4>
+                  <p className="text-sm text-yellow-700">
+                    Either the webhook is not configured, Odoo didn't respond, or there was an error.
+                    Check the browser console for more details.
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 }

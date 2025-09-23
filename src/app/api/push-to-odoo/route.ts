@@ -6,6 +6,11 @@ import { storePdf } from '@/lib/pdf-storage';
 export const dynamic = 'force-dynamic'; // Prevent caching
 
 export async function POST(request: NextRequest) {
+  console.log('='.repeat(50));
+  console.log('PUSH TO ODOO ENDPOINT CALLED');
+  console.log('Timestamp:', new Date().toISOString());
+  console.log('='.repeat(50));
+
   try {
     const body = await request.json();
     const { invoices, originalPdfBase64 } = body;
@@ -88,10 +93,20 @@ export async function POST(request: NextRequest) {
 
     // Forward to Odoo webhook (when configured)
     let odooResponseData = null;
+
+    console.log('\n🌐 WEBHOOK CONFIGURATION:');
+    console.log('ODOO_WEBHOOK_URL:', process.env.ODOO_WEBHOOK_URL || 'NOT SET');
+    console.log('NEXT_PUBLIC_BASE_URL:', process.env.NEXT_PUBLIC_BASE_URL || 'NOT SET');
+    console.log('ODOO_API_KEY:', process.env.ODOO_API_KEY ? 'SET (hidden)' : 'NOT SET');
+
     if (process.env.ODOO_WEBHOOK_URL) {
       try {
-        console.log('Sending to Odoo webhook:', process.env.ODOO_WEBHOOK_URL);
-        console.log('Payload:', JSON.stringify(odooPayload, null, 2));
+        console.log('\n🚀 ATTEMPTING TO SEND TO ODOO...');
+        console.log('Webhook URL:', process.env.ODOO_WEBHOOK_URL);
+        console.log('Number of invoices:', odooPayload.invoices.length);
+        console.log('Invoice numbers:', odooPayload.invoices.map(inv => inv["Invoice-No"]));
+        console.log('\nFull payload being sent:');
+        console.log(JSON.stringify(odooPayload, null, 2));
 
         const odooResponse = await fetch(process.env.ODOO_WEBHOOK_URL, {
           method: 'POST',
@@ -102,30 +117,63 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify(odooPayload)
         });
 
+        console.log('\n📡 Response received from Odoo:');
+        console.log('Status:', odooResponse.status, odooResponse.statusText);
+        console.log('Headers:', Object.fromEntries(odooResponse.headers.entries()));
+
         if (!odooResponse.ok) {
           const errorText = await odooResponse.text();
-          console.error(`Odoo webhook failed: ${odooResponse.status} ${odooResponse.statusText}`);
-          console.error('Error response:', errorText);
+          console.error('❌ ODOO WEBHOOK FAILED');
+          console.error('Status:', odooResponse.status, odooResponse.statusText);
+          console.error('Error response body:', errorText);
           // Don't fail the entire request if Odoo fails
         } else {
-          odooResponseData = await odooResponse.json();
-          console.log('Odoo response:', odooResponseData);
+          const responseText = await odooResponse.text();
+          console.log('✅ ODOO WEBHOOK SUCCESS');
+          console.log('Raw response:', responseText);
+
+          try {
+            odooResponseData = JSON.parse(responseText);
+            console.log('Parsed response:', odooResponseData);
+          } catch (parseError) {
+            console.log('Response is not JSON, using raw text');
+            odooResponseData = { rawResponse: responseText };
+          }
         }
       } catch (webhookError) {
-        console.error('Failed to send to Odoo webhook:', webhookError);
+        console.error('\n🔥 CRITICAL ERROR sending to Odoo webhook:');
+        console.error('Error type:', webhookError instanceof Error ? webhookError.constructor.name : typeof webhookError);
+        console.error('Error message:', webhookError instanceof Error ? webhookError.message : webhookError);
+        console.error('Stack trace:', webhookError instanceof Error ? webhookError.stack : 'No stack trace');
         // Continue even if webhook fails
       }
+    } else {
+      console.warn('\n⚠️ ODOO_WEBHOOK_URL is not configured');
+      console.warn('Data prepared but NOT sent to Odoo');
     }
 
-    return NextResponse.json({
+    const responseData = {
       success: true,
       taskId,
       message: process.env.ODOO_WEBHOOK_URL ? 'Data sent to Odoo' : 'Data prepared for Odoo (webhook not configured)',
       invoiceCount: invoices.length,
       payload: odooPayload, // Include payload for debugging/documentation
       odooResponse: odooResponseData, // Include Odoo's response if available
-      attachmentUrls: odooPayload.invoices.map(inv => inv.attachments[0]?.url) // List of attachment URLs
-    });
+      attachmentUrls: odooPayload.invoices.map(inv => inv.attachments[0]?.url), // List of attachment URLs
+      configuration: {
+        webhookConfigured: !!process.env.ODOO_WEBHOOK_URL,
+        baseUrlConfigured: !!process.env.NEXT_PUBLIC_BASE_URL,
+        apiKeyConfigured: !!process.env.ODOO_API_KEY
+      }
+    };
+
+    console.log('\n🎯 FINAL RESPONSE TO CLIENT:');
+    console.log('Success:', responseData.success);
+    console.log('Message:', responseData.message);
+    console.log('Configuration:', responseData.configuration);
+    console.log('='.repeat(50));
+
+    return NextResponse.json(responseData);
 
   } catch (error) {
     console.error('Push to Odoo error:', error);
