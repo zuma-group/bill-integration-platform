@@ -48,8 +48,9 @@ export async function POST(request: NextRequest) {
           "Invoice-No": invoice.invoiceNumber,
           "Invoice-Date": invoice.invoiceDate,
           "Customer PO Number": invoice.customerPoNumber || "",
-          "Customer": `${invoice.customer.name}\n${invoice.customer.address}`,
-          "Customer No": "", // We don't extract this
+          "Vendor": `${invoice.vendor.name}\n${invoice.vendor.address}`,  // The supplier issuing the bill
+          "Vendor No": invoice.vendor.taxId || "", // Use tax ID as vendor number
+          "Bill-To": `${invoice.customer.name}\n${invoice.customer.address}`, // The recipient of the bill
           "Payment Terms": invoice.paymentTerms || "NET 30 DAYS",
           "Subtotal": invoice.subtotal.toFixed(2),
           "Tax Amount": invoice.taxAmount.toFixed(2),
@@ -143,8 +144,9 @@ export async function POST(request: NextRequest) {
           try {
             odooResponseData = JSON.parse(responseText);
             console.log('Parsed response:', odooResponseData);
-          } catch {
+          } catch (parseError) {
             console.log('Response is not JSON, using raw text');
+            console.log('Parse error:', parseError);
             odooResponseData = { rawResponse: responseText };
           }
         }
