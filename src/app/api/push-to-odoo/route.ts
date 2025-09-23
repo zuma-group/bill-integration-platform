@@ -103,9 +103,10 @@ export async function POST(request: NextRequest) {
 
         // Log a sample of the payload (without the full base64 content)
         const debugPayload = JSON.parse(JSON.stringify(odooPayload)) as OdooBillPayload;
-        debugPayload.invoices.forEach((inv: any) => {
+        debugPayload.invoices.forEach((inv) => {
           if (inv.attachments && inv.attachments[0]?.content) {
-            inv.attachments[0].content = `[BASE64 DATA - ${inv.attachments[0].content.length} chars]`;
+            const contentLength = inv.attachments[0].content.length;
+            inv.attachments[0].content = `[BASE64 DATA - ${contentLength} chars]`;
           }
         });
         console.log('\nPayload structure (base64 truncated):');
