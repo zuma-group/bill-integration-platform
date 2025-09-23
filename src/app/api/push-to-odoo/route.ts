@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
           try {
             odooResponseData = JSON.parse(responseText);
             console.log('Parsed response:', odooResponseData);
-          } catch (parseError) {
+          } catch {
             console.log('Response is not JSON, using raw text');
             odooResponseData = { rawResponse: responseText };
           }

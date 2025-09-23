@@ -22,7 +22,7 @@ export default function HomePage() {
   const [originalPdfBase64, setOriginalPdfBase64] = useState<string | null>(null);
   const [isPushingToOdoo, setIsPushingToOdoo] = useState(false);
   const [showResponseModal, setShowResponseModal] = useState(false);
-  const [odooResponseDetails, setOdooResponseDetails] = useState<any>(null);
+  const [odooResponseDetails, setOdooResponseDetails] = useState<Record<string, unknown> | null>(null);
 
   const {
     loadData,
@@ -379,11 +379,11 @@ export default function HomePage() {
                 </pre>
               </div>
 
-              {odooResponseDetails.attachmentUrls && (
+              {odooResponseDetails.attachmentUrls && Array.isArray(odooResponseDetails.attachmentUrls) && (
                 <div>
                   <h4 className="font-semibold mb-2">Attachment URLs Generated</h4>
                   <ul className="list-disc list-inside text-sm">
-                    {odooResponseDetails.attachmentUrls.map((url: string, idx: number) => (
+                    {(odooResponseDetails.attachmentUrls as string[]).map((url, idx) => (
                       <li key={idx} className="text-blue-600">{url}</li>
                     ))}
                   </ul>
@@ -403,7 +403,7 @@ export default function HomePage() {
                 <div className="bg-yellow-50 p-4 rounded-lg">
                   <h4 className="font-semibold mb-2 text-yellow-800">⚠️ No Response from Odoo</h4>
                   <p className="text-sm text-yellow-700">
-                    Either the webhook is not configured, Odoo didn't respond, or there was an error.
+                    Either the webhook is not configured, Odoo didn&apos;t respond, or there was an error.
                     Check the browser console for more details.
                   </p>
                 </div>
