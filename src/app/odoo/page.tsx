@@ -9,7 +9,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { Trash2, Database } from 'lucide-react';
 
 export default function OdooPage() {
-  const { odooRecords, loadData, deleteOdooRecord } = useInvoiceStore();
+  const { odooRecords, loadData, deleteOdooRecord, setOdooRecords } = useInvoiceStore();
 
   useEffect(() => {
     loadData();
@@ -18,6 +18,13 @@ export default function OdooPage() {
   const handleDelete = (id: string) => {
     if (confirm('Are you sure you want to delete this Odoo record?')) {
       deleteOdooRecord(id);
+    }
+  };
+
+  const handleClearAll = () => {
+    if (confirm(`Are you sure you want to delete all ${odooRecords.length} Odoo records? This cannot be undone.`)) {
+      setOdooRecords([]);
+      console.log('🗑️ Cleared all Odoo records from storage');
     }
   };
 
@@ -42,7 +49,18 @@ export default function OdooPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Odoo Vendor Bills</CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle>Odoo Vendor Bills ({odooRecords.length} records)</CardTitle>
+          {odooRecords.length > 0 && (
+            <Button
+              variant="danger"
+              icon={Trash2}
+              onClick={handleClearAll}
+            >
+              Clear All Records
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">

@@ -5,10 +5,10 @@ import { InvoiceCard } from '@/components/invoice/invoice-card';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useInvoiceStore } from '@/store/invoice-store';
-import { Link, FileText } from 'lucide-react';
+import { Link, FileText, Trash2 } from 'lucide-react';
 
 export default function InvoicesPage() {
-  const { invoices, loadData, syncToOdoo } = useInvoiceStore();
+  const { invoices, loadData, syncToOdoo, setInvoices } = useInvoiceStore();
 
   useEffect(() => {
     loadData();
@@ -19,6 +19,13 @@ export default function InvoicesPage() {
   const handleSyncAll = () => {
     const invoiceIds = extractedInvoices.map(inv => inv.id || '');
     syncToOdoo(invoiceIds);
+  };
+
+  const handleClearAll = () => {
+    if (confirm(`Are you sure you want to delete all ${invoices.length} invoices? This cannot be undone.`)) {
+      setInvoices([]);
+      console.log('🗑️ Cleared all invoices from storage');
+    }
   };
 
   if (invoices.length === 0) {
@@ -44,16 +51,27 @@ export default function InvoicesPage() {
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Processed Invoices</CardTitle>
-            {extractedInvoices.length > 0 && (
-              <Button
-                variant="primary"
-                icon={Link}
-                onClick={handleSyncAll}
-              >
-                Sync All Extracted ({extractedInvoices.length})
-              </Button>
-            )}
+            <CardTitle>Processed Invoices ({invoices.length} total)</CardTitle>
+            <div className="flex gap-2">
+              {extractedInvoices.length > 0 && (
+                <Button
+                  variant="primary"
+                  icon={Link}
+                  onClick={handleSyncAll}
+                >
+                  Sync All Extracted ({extractedInvoices.length})
+                </Button>
+              )}
+              {invoices.length > 0 && (
+                <Button
+                  variant="danger"
+                  icon={Trash2}
+                  onClick={handleClearAll}
+                >
+                  Clear All
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
