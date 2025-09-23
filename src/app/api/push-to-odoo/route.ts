@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
 import { OdooBillPayload, Invoice } from '@/types';
-import { storePdf } from '@/lib/pdf-storage';
 
 export const dynamic = 'force-dynamic'; // Prevent caching
 
@@ -35,10 +34,6 @@ export async function POST(request: NextRequest) {
     // Split PDF if multiple invoices
     const splitPdfs = await splitPdfByInvoices(originalPdfBase64, invoices);
 
-    // Get base URL for attachment URLs
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ||
-                   (request.headers.get('host') ? `https://${request.headers.get('host')}` : '');
-
     // Transform data to match Odoo's exact format
     const odooPayload: OdooBillPayload = {
       invoices: invoices.map((invoice: Invoice) => {
@@ -47,9 +42,6 @@ export async function POST(request: NextRequest) {
 
         // Get the PDF for this invoice (split if needed)
         const pdfBase64 = splitPdfs.get(invoice.id!) || originalPdfBase64;
-
-        // Store PDF so it can be retrieved via URL
-        storePdf(filename, pdfBase64);
 
         return {
           // Main invoice fields (capitalized as Odoo expects)
@@ -82,10 +74,10 @@ export async function POST(request: NextRequest) {
             subtotal: item.amount
           })),
 
-          // Attachments with URL format
+          // Attachments with base64 content
           attachments: [{
             filename: filename,
-            url: baseUrl ? `${baseUrl}/api/attachments/${filename}` : `/api/attachments/${filename}`
+            content: pdfBase64  // Send base64 directly
           }]
         };
       })
@@ -96,7 +88,6 @@ export async function POST(request: NextRequest) {
 
     console.log('\n🌐 WEBHOOK CONFIGURATION:');
     console.log('ODOO_WEBHOOK_URL:', process.env.ODOO_WEBHOOK_URL || 'NOT SET');
-    console.log('NEXT_PUBLIC_BASE_URL:', process.env.NEXT_PUBLIC_BASE_URL || 'NOT SET');
     console.log('ODOO_API_KEY:', process.env.ODOO_API_KEY ? 'SET (hidden)' : 'NOT SET');
 
     if (process.env.ODOO_WEBHOOK_URL) {
@@ -159,10 +150,12 @@ export async function POST(request: NextRequest) {
       invoiceCount: invoices.length,
       payload: odooPayload, // Include payload for debugging/documentation
       odooResponse: odooResponseData, // Include Odoo's response if available
-      attachmentUrls: odooPayload.invoices.map(inv => inv.attachments[0]?.url), // List of attachment URLs
+      attachmentInfo: odooPayload.invoices.map(inv => ({
+        filename: inv.attachments[0]?.filename,
+        size: inv.attachments[0]?.content ? Math.round(inv.attachments[0].content.length * 0.75 / 1024) + ' KB' : '0 KB'
+      })), // Info about attachments
       configuration: {
         webhookConfigured: !!process.env.ODOO_WEBHOOK_URL,
-        baseUrlConfigured: !!process.env.NEXT_PUBLIC_BASE_URL,
         apiKeyConfigured: !!process.env.ODOO_API_KEY
       }
     };

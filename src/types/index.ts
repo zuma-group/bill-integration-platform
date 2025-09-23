@@ -153,10 +153,10 @@ export interface OdooBillPayload {
       subtotal: number;
     }>;
 
-    // Attachments with URL format
+    // Attachments with base64 data
     attachments: Array<{
       filename: string;
-      url: string;  // URL path to retrieve PDF
+      content: string;  // Base64 encoded PDF data
     }>;
   }>;
 }

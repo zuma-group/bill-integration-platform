@@ -245,8 +245,7 @@ export default function HomePage() {
       // Show connection info
       const testInfo = {
         message: 'Connection test completed',
-        webhookConfigured: !!process.env.NEXT_PUBLIC_BASE_URL,
-        baseUrl: process.env.NEXT_PUBLIC_BASE_URL || 'Not set',
+        webhookConfigured: result.configuration?.webhookConfigured || false,
         info: result
       };
 
@@ -379,12 +378,12 @@ export default function HomePage() {
                 </pre>
               </div>
 
-              {odooResponseDetails.attachmentUrls && Array.isArray(odooResponseDetails.attachmentUrls) && (
+              {odooResponseDetails.attachmentInfo && Array.isArray(odooResponseDetails.attachmentInfo) && (
                 <div>
-                  <h4 className="font-semibold mb-2">Attachment URLs Generated</h4>
+                  <h4 className="font-semibold mb-2">Attachments Included</h4>
                   <ul className="list-disc list-inside text-sm">
-                    {(odooResponseDetails.attachmentUrls as string[]).map((url, idx) => (
-                      <li key={idx} className="text-blue-600">{url}</li>
+                    {(odooResponseDetails.attachmentInfo as Array<{filename: string, size: string}>).map((info, idx) => (
+                      <li key={idx} className="text-blue-600">{info.filename} ({info.size})</li>
                     ))}
                   </ul>
                 </div>
