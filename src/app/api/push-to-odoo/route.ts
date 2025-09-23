@@ -96,15 +96,31 @@ export async function POST(request: NextRequest) {
         console.log('Webhook URL:', process.env.ODOO_WEBHOOK_URL);
         console.log('Number of invoices:', odooPayload.invoices.length);
         console.log('Invoice numbers:', odooPayload.invoices.map(inv => inv["Invoice-No"]));
-        console.log('\nFull payload being sent:');
-        console.log(JSON.stringify(odooPayload, null, 2));
+
+        // Log payload size
+        const payloadStr = JSON.stringify(odooPayload);
+        console.log('Payload size:', (payloadStr.length / 1024).toFixed(2), 'KB');
+
+        // Log a sample of the payload (without the full base64 content)
+        const debugPayload = JSON.parse(JSON.stringify(odooPayload));
+        debugPayload.invoices.forEach(inv => {
+          if (inv.attachments && inv.attachments[0]?.content) {
+            inv.attachments[0].content = `[BASE64 DATA - ${inv.attachments[0].content.length} chars]`;
+          }
+        });
+        console.log('\nPayload structure (base64 truncated):');
+        console.log(JSON.stringify(debugPayload, null, 2));
+
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(process.env.ODOO_API_KEY && { 'X-API-Key': process.env.ODOO_API_KEY })
+        };
+
+        console.log('\nRequest headers:', headers);
 
         const odooResponse = await fetch(process.env.ODOO_WEBHOOK_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(process.env.ODOO_API_KEY && { 'X-API-Key': process.env.ODOO_API_KEY })
-          },
+          headers,
           body: JSON.stringify(odooPayload)
         });
 
