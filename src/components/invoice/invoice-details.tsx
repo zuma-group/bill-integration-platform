@@ -18,7 +18,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Invoice } from '@/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 

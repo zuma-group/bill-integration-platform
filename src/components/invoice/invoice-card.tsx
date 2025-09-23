@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { InvoiceDetails } from './invoice-details';
 import { Invoice } from '@/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { useInvoiceStore } from '@/store/invoice-store';
 
 interface InvoiceCardProps {

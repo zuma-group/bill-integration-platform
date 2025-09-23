@@ -149,7 +149,7 @@ export interface OdooBillPayload {
       quantity: number;
       unit_price: number;
       discount: number;
-      taxes: any[];
+      taxes: unknown[];
       subtotal: number;
     }>;
 
