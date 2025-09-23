@@ -132,7 +132,7 @@ When BIP pushes data to Odoo, it sends the following exact structure matching Od
 - Multiple invoices: PDF is split, each invoice gets individual PDF
 - URLs are provided in `attachments` array, not base64
 
-## Integration Workflow
+## Integration Workflo
 
 1. **User uploads document** to BIP
 2. **BIP extracts invoice data** using OCR
