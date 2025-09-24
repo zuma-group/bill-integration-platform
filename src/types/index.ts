@@ -165,7 +165,7 @@ export interface OdooBillPayload {
     // Attachments with base64 data
     attachments: Array<{
       filename: string;
-      url: string;  // HTTPS URL to fetch the PDF attachment
+      content: string;  // Base64 encoded PDF data
     }>;
   }>;
 }

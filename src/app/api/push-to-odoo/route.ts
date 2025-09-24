@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
-import { storePdf } from '@/lib/pdf-storage';
 import { OdooBillPayload, Invoice } from '@/types';
 
 export const dynamic = 'force-dynamic'; // Prevent caching
@@ -35,15 +34,10 @@ export async function POST(request: NextRequest) {
     // Split PDF if multiple invoices
     const splitPdfs = await splitPdfByInvoices(originalPdfBase64, invoices);
 
-    const baseUrlEnv = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, '');
-    const runtimeBaseUrl = request.nextUrl.origin;
-    const attachmentBaseUrl = baseUrlEnv || runtimeBaseUrl;
-
     const attachmentMeta: Array<{
       invoiceId: string;
       invoiceNumber: string;
       filename: string;
-      url: string;
       size: string;
     }> = [];
 
@@ -57,15 +51,11 @@ export async function POST(request: NextRequest) {
         const filename = `INV_${sanitizedNumber}_${filenameSuffix}.pdf`;
 
         const pdfBase64 = splitPdfs.get(invoice.id || '') || originalPdfBase64;
-        storePdf(filename, pdfBase64, 'application/pdf');
-
-        const attachmentUrl = `${attachmentBaseUrl}/api/attachments/${encodeURIComponent(filename)}`;
         const estimatedSizeKb = Math.round(pdfBase64.length * 0.75 / 1024);
         attachmentMeta.push({
           invoiceId: invoiceKey,
           invoiceNumber: rawInvoiceNumber,
           filename,
-          url: attachmentUrl,
           size: `${estimatedSizeKb} KB`
         });
 
@@ -159,10 +149,10 @@ export async function POST(request: NextRequest) {
           // Line items
           lines,
 
-          // Attachments exposed via URL
+          // Attachments embedded as base64 content
           attachments: [{
             filename,
-            url: attachmentUrl
+            content: pdfBase64
           }]
         };
       })

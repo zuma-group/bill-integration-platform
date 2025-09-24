@@ -495,7 +495,7 @@ export default function HomePage() {
                             View PDF
                           </a>
                         ) : (
-                          <span className="text-xs text-secondary-text">No URL</span>
+                          <span className="text-xs text-secondary-text">Provided inline (base64)</span>
                         )}
                       </div>
                     ))}
