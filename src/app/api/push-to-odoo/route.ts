@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
+import { storePdf } from '@/lib/pdf-storage';
 import { OdooBillPayload, Invoice } from '@/types';
 
 export const dynamic = 'force-dynamic'; // Prevent caching
@@ -34,53 +35,106 @@ export async function POST(request: NextRequest) {
     // Split PDF if multiple invoices
     const splitPdfs = await splitPdfByInvoices(originalPdfBase64, invoices);
 
+    const baseUrlEnv = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, '');
+    const runtimeBaseUrl = request.nextUrl.origin;
+    const attachmentBaseUrl = baseUrlEnv || runtimeBaseUrl;
+
+    const attachmentMeta: Array<{ filename: string; url: string; size: string }> = [];
+
     // Transform data to match Odoo's exact format
     const odooPayload: OdooBillPayload = {
-      invoices: invoices.map((invoice: Invoice) => {
-        // Generate filename for this invoice
-        const filename = `INV${invoice.invoiceNumber.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+      invoices: invoices.map((invoice: Invoice, index) => {
+        const invoiceId = invoice.id ?? generateTaskId();
+        const rawInvoiceNumber = invoice.invoiceNumber || `INV-${index + 1}`;
+        const sanitizedNumber = rawInvoiceNumber.replace(/[^a-zA-Z0-9]/g, '_') || `INV_${index + 1}`;
+        const filenameSuffix = invoiceId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8) || `IDX${index}`;
+        const filename = `INV_${sanitizedNumber}_${filenameSuffix}.pdf`;
 
-        // Get the PDF for this invoice (split if needed)
-        const pdfBase64 = splitPdfs.get(invoice.id!) || originalPdfBase64;
+        const pdfBase64 = splitPdfs.get(invoice.id || '') || originalPdfBase64;
+        storePdf(filename, pdfBase64, 'application/pdf');
+
+        const attachmentUrl = `${attachmentBaseUrl}/api/attachments/${encodeURIComponent(filename)}`;
+        const estimatedSizeKb = Math.round(pdfBase64.length * 0.75 / 1024);
+        attachmentMeta.push({
+          filename,
+          url: attachmentUrl,
+          size: `${estimatedSizeKb} KB`
+        });
+
+        const customerLines = [invoice.customer?.name, invoice.customer?.address].filter(Boolean).join('\n');
+        const customerSummary = customerLines || invoice.customer?.name || '';
+
+        const baseLines = invoice.lineItems.map(item => {
+          const quantity = Number.isFinite(item.quantity) ? Number(item.quantity) : 0;
+          const amount = Number.isFinite(item.amount) ? Number(item.amount) : 0;
+          const fallbackUnit = quantity ? amount / quantity : Number(item.unitPrice ?? 0);
+          const unitPrice = Number((Number.isFinite(fallbackUnit) ? fallbackUnit : 0).toFixed(4));
+          const lineSubtotal = Number(amount.toFixed(2));
+
+          return {
+            product_code: item.partNumber || '',
+            description: item.description,
+            quantity,
+            unit_price: unitPrice,
+            discount: 0,
+            taxes: [],
+            subtotal: lineSubtotal
+          };
+        });
+
+        const subtotalValue = Number(
+          baseLines.reduce((sum, line) => sum + line.subtotal, 0).toFixed(2)
+        );
+
+        const taxAmountValue = Number((invoice.taxAmount ?? 0).toFixed(2));
+        const lines = [...baseLines];
+
+        if (Math.abs(taxAmountValue) > 0) {
+          lines.push({
+            product_code: 'TAX',
+            description: 'Sales Tax',
+            quantity: 1,
+            unit_price: taxAmountValue,
+            discount: 0,
+            taxes: [],
+            subtotal: taxAmountValue
+          });
+        }
+
+        const totalAmountValue = Number((subtotalValue + taxAmountValue).toFixed(2));
 
         return {
           // Main invoice fields (capitalized as Odoo expects)
-          "Invoice-No": invoice.invoiceNumber,
+          "Invoice-No": rawInvoiceNumber,
           "Invoice-Date": invoice.invoiceDate,
-          "Customer PO Number": invoice.customerPoNumber || "",
-          "Vendor": invoice.vendor.name,  // Just the vendor name
-          "Vendor Address": invoice.vendor.address,  // Separate address field
-          "Vendor No": invoice.vendor.taxId || "", // Use tax ID as vendor number
-          "Bill-To": invoice.customer.name, // Just the customer name
-          "Bill-To Address": invoice.customer.address, // Separate address field
-          "Payment Terms": invoice.paymentTerms || "NET 30 DAYS",
-          "Subtotal": invoice.subtotal.toFixed(2),
-          "Tax Amount": invoice.taxAmount.toFixed(2),
-          "Total Amount": invoice.total.toFixed(2),
-          "invoice-or-credit": "INVOICE" as const,
+          "Customer PO Number": invoice.customerPoNumber || '',
+          "Customer": customerSummary,
+          "Vendor": invoice.vendor.name,
+          "Vendor Address": invoice.vendor.address,
+          "Vendor No": invoice.vendor.taxId || '',
+          "Bill-To": invoice.customer.name,
+          "Bill-To Address": invoice.customer.address,
+          "Payment Terms": invoice.paymentTerms || 'NET 30 DAYS',
+          "Subtotal": subtotalValue.toFixed(2),
+          "Tax Amount": taxAmountValue.toFixed(2),
+          "Total Amount": totalAmountValue.toFixed(2),
+          "Currency": invoice.currency || 'USD',
+          "invoice-or-credit": 'INVOICE' as const,
 
           // Optional fields (set defaults)
-          "Carrier": "",
-          "Date Shipped": "",
-          "Sales Order No": "",
-          "Incoterms": "",
-          "Freight": "",
+          "Carrier": '',
+          "Date Shipped": '',
+          "Sales Order No": '',
+          "Incoterms": '',
+          "Freight": '',
 
           // Line items
-          lines: invoice.lineItems.map(item => ({
-            product_code: item.partNumber || "", // partNumber maps to product_code
-            description: item.description,
-            quantity: item.quantity,
-            unit_price: item.unitPrice,
-            discount: 0, // We don't extract discount
-            taxes: [],
-            subtotal: item.amount
-          })),
+          lines,
 
-          // Attachments with base64 content
+          // Attachments exposed via URL
           attachments: [{
-            filename: filename,
-            content: pdfBase64  // Send base64 directly
+            filename,
+            url: attachmentUrl
           }]
         };
       })
@@ -104,16 +158,9 @@ export async function POST(request: NextRequest) {
         const payloadStr = JSON.stringify(odooPayload);
         console.log('Payload size:', (payloadStr.length / 1024).toFixed(2), 'KB');
 
-        // Log a sample of the payload (without the full base64 content)
-        const debugPayload = JSON.parse(JSON.stringify(odooPayload)) as OdooBillPayload;
-        debugPayload.invoices.forEach((inv) => {
-          if (inv.attachments && inv.attachments[0]?.content) {
-            const contentLength = inv.attachments[0].content.length;
-            inv.attachments[0].content = `[BASE64 DATA - ${contentLength} chars]`;
-          }
-        });
-        console.log('\nPayload structure (base64 truncated):');
-        console.log(JSON.stringify(debugPayload, null, 2));
+        // Log a sample of the payload (attachments already URLs)
+        console.log('\nPayload structure:');
+        console.log(JSON.stringify(odooPayload, null, 2));
 
         const headers = {
           'Content-Type': 'application/json',
@@ -171,10 +218,7 @@ export async function POST(request: NextRequest) {
       invoiceCount: invoices.length,
       payload: odooPayload, // Include payload for debugging/documentation
       odooResponse: odooResponseData, // Include Odoo's response if available
-      attachmentInfo: odooPayload.invoices.map(inv => ({
-        filename: inv.attachments[0]?.filename,
-        size: inv.attachments[0]?.content ? Math.round(inv.attachments[0].content.length * 0.75 / 1024) + ' KB' : '0 KB'
-      })), // Info about attachments
+      attachmentInfo: attachmentMeta,
       configuration: {
         webhookConfigured: !!process.env.ODOO_WEBHOOK_URL,
         apiKeyConfigured: !!process.env.ODOO_API_KEY

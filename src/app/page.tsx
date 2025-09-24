@@ -381,11 +381,28 @@ export default function HomePage() {
               {odooResponseDetails.attachmentInfo && Array.isArray(odooResponseDetails.attachmentInfo) && (
                 <div>
                   <h4 className="font-semibold mb-2">Attachments Included</h4>
-                  <ul className="list-disc list-inside text-sm">
-                    {(odooResponseDetails.attachmentInfo as Array<{filename: string, size: string}>).map((info, idx) => (
-                      <li key={idx} className="text-blue-600">{info.filename} ({info.size})</li>
+                  <div className="space-y-2">
+                    {(odooResponseDetails.attachmentInfo as Array<{filename: string; size: string; url?: string}>).map((info, idx) => (
+                      <div key={idx} className="flex items-center justify-between gap-2 rounded-lg border border-accent-hover px-3 py-2 text-sm">
+                        <div>
+                          <div className="font-medium text-primary-text">{info.filename}</div>
+                          <div className="text-xs text-secondary-text">{info.size}</div>
+                        </div>
+                        {info.url ? (
+                          <a
+                            href={info.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded-lg border border-accent-action px-3 py-1 text-xs font-medium text-accent-action transition-colors hover:bg-accent-hover"
+                          >
+                            View PDF
+                          </a>
+                        ) : (
+                          <span className="text-xs text-secondary-text">No URL</span>
+                        )}
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 </div>
               )}
 

@@ -118,6 +118,8 @@ export interface OdooBillPayload {
     "Invoice-No": string;
     "Invoice-Date": string;
     "Customer PO Number": string;
+    "Customer"?: string;
+    "Customer No"?: string;
     "Vendor": string;  // The supplier/vendor name
     "Vendor Address"?: string;  // The vendor address
     "Vendor No"?: string;
@@ -128,6 +130,7 @@ export interface OdooBillPayload {
     "Tax Amount": string;
     "Total Amount": string;
     "invoice-or-credit": "INVOICE" | "CREDIT";
+    "Currency"?: string;
 
     // Optional fields Odoo expects
     "Carrier"?: string;
@@ -159,7 +162,7 @@ export interface OdooBillPayload {
     // Attachments with base64 data
     attachments: Array<{
       filename: string;
-      content: string;  // Base64 encoded PDF data
+      url: string;  // HTTPS URL to fetch the PDF attachment
     }>;
   }>;
 }
