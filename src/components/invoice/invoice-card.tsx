@@ -13,17 +13,22 @@ import { useInvoiceStore } from '@/store/invoice-store';
 
 interface InvoiceCardProps {
   invoice: Invoice;
-  onSync?: () => void;
+  onSendToOdoo?: (invoice: Invoice) => Promise<void> | void;
+  isSending?: boolean;
 }
 
-export function InvoiceCard({ invoice, onSync }: InvoiceCardProps) {
-  const { deleteInvoice, syncToOdoo } = useInvoiceStore();
+export function InvoiceCard({ invoice, onSendToOdoo, isSending = false }: InvoiceCardProps) {
+  const { deleteInvoice } = useInvoiceStore();
   const [showDetails, setShowDetails] = useState(false);
+  const [localSyncing, setLocalSyncing] = useState(false);
 
-  const handleSync = () => {
-    if (invoice.id) {
-      syncToOdoo([invoice.id]);
-      onSync?.();
+  const handleSync = async () => {
+    if (!onSendToOdoo) return;
+    try {
+      setLocalSyncing(true);
+      await Promise.resolve(onSendToOdoo(invoice));
+    } finally {
+      setLocalSyncing(false);
     }
   };
 
@@ -114,10 +119,11 @@ export function InvoiceCard({ invoice, onSync }: InvoiceCardProps) {
             variant="primary"
             size="sm"
             icon={Link}
-            onClick={handleSync}
-            className="flex-1"
+          onClick={handleSync}
+          className="flex-1"
+          disabled={!onSendToOdoo || isSending || localSyncing}
           >
-            Sync to Odoo
+            {isSending || localSyncing ? 'Syncing…' : 'Sync to Odoo'}
           </Button>
         ) : (
           <Button variant="secondary" size="sm" disabled className="flex-1">

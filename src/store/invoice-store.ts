@@ -35,7 +35,7 @@ interface InvoiceStore {
   setProcessing: (isProcessing: boolean) => void;
   setError: (error: string | null) => void;
 
-  syncToOdoo: (invoiceIds: string[]) => void;
+  syncToOdoo: (entries: Array<{ invoice: Invoice; changes?: Partial<Invoice> }>) => void;
 }
 
 export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
@@ -169,40 +169,84 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
   setError: (error) => set({ error }),
 
   // Sync to Odoo
-  syncToOdoo: (invoiceIds) => {
-    const { invoices } = get();
-    const invoicesToSync = invoices.filter(inv =>
-      invoiceIds.includes(inv.id || '') && inv.status === 'extracted'
-    );
+  syncToOdoo: (entries) => {
+    if (entries.length === 0) {
+      return;
+    }
 
-    invoicesToSync.forEach(invoice => {
-      // Create Odoo record
-      const odooRecord: OdooRecord = {
-        id: crypto.randomUUID(),
-        move_type: 'in_invoice',
-        partner_id: invoice.vendor.name,
-        invoice_date: invoice.invoiceDate,
-        invoice_date_due: invoice.dueDate,
-        ref: invoice.invoiceNumber,
-        invoice_line_ids: invoice.lineItems.map(item => ({
-          name: item.description,
-          quantity: item.quantity,
-          price_unit: item.unitPrice,
-          price_subtotal: item.amount,
-          tax_amount: item.tax,
-        })),
-        amount_total: invoice.total,
-        state: 'draft',
-        created_at: new Date().toISOString(),
-      };
-
-      get().addOdooRecord(odooRecord);
-
-      // Update invoice status
-      get().updateInvoice(invoice.id || '', {
-        status: 'synced',
-        syncedAt: new Date().toISOString(),
+    set((state) => {
+      const now = new Date().toISOString();
+      const updateMap = new Map<string, { invoice: Invoice; changes?: Partial<Invoice> }>();
+      entries.forEach(entry => {
+        if (!entry.invoice.id) return;
+        updateMap.set(entry.invoice.id, entry);
       });
+
+      const updatedInvoices = state.invoices.map(inv => {
+        const entry = updateMap.get(inv.id || '');
+        if (!entry) return inv;
+
+        const { changes } = entry;
+        const merged: Invoice = {
+          ...inv,
+          ...changes,
+          status: 'synced',
+          syncedAt: changes?.syncedAt || now,
+        };
+        return merged;
+      });
+
+      storage.set('invoices', updatedInvoices);
+
+      const previousStatuses = new Map<string, string>();
+      state.invoices.forEach(inv => {
+        if (inv.id) previousStatuses.set(inv.id, inv.status);
+      });
+
+      const updatedOdooRecords = [...state.odooRecords];
+      entries.forEach(entry => {
+        const invoiceId = entry.invoice.id;
+        if (!invoiceId) return;
+        const priorStatus = previousStatuses.get(invoiceId);
+        if (priorStatus === 'synced') {
+          return; // Prevent duplicate records
+        }
+
+        const sourceInvoice = updatedInvoices.find(inv => inv.id === invoiceId);
+        if (!sourceInvoice) return;
+
+        const odooRecord: OdooRecord = {
+          id: crypto.randomUUID(),
+          move_type: 'in_invoice',
+          partner_id: sourceInvoice.vendor.name,
+          invoice_date: sourceInvoice.invoiceDate,
+          invoice_date_due: sourceInvoice.dueDate,
+          ref: sourceInvoice.invoiceNumber,
+          customer_po: sourceInvoice.customerPoNumber,
+          invoice_line_ids: sourceInvoice.lineItems.map(item => ({
+            name: item.description,
+            product_ref: item.partNumber,
+            quantity: item.quantity,
+            price_unit: item.unitPrice,
+            price_subtotal: item.amount,
+            tax_amount: item.tax,
+          })),
+          amount_total: sourceInvoice.total,
+          state: 'draft',
+          created_at: now,
+        };
+
+        updatedOdooRecords.push(odooRecord);
+      });
+
+      if (updatedOdooRecords.length !== state.odooRecords.length) {
+        storage.set('odooRecords', updatedOdooRecords);
+      }
+
+      return {
+        invoices: updatedInvoices,
+        odooRecords: updatedOdooRecords,
+      };
     });
   },
 }));

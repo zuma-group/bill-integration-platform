@@ -39,15 +39,21 @@ export async function POST(request: NextRequest) {
     const runtimeBaseUrl = request.nextUrl.origin;
     const attachmentBaseUrl = baseUrlEnv || runtimeBaseUrl;
 
-    const attachmentMeta: Array<{ filename: string; url: string; size: string }> = [];
+    const attachmentMeta: Array<{
+      invoiceId: string;
+      invoiceNumber: string;
+      filename: string;
+      url: string;
+      size: string;
+    }> = [];
 
     // Transform data to match Odoo's exact format
     const odooPayload: OdooBillPayload = {
       invoices: invoices.map((invoice: Invoice, index) => {
-        const invoiceId = invoice.id ?? generateTaskId();
+        const invoiceKey = invoice.id ?? invoice.invoiceNumber ?? generateTaskId();
         const rawInvoiceNumber = invoice.invoiceNumber || `INV-${index + 1}`;
         const sanitizedNumber = rawInvoiceNumber.replace(/[^a-zA-Z0-9]/g, '_') || `INV_${index + 1}`;
-        const filenameSuffix = invoiceId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8) || `IDX${index}`;
+        const filenameSuffix = invoiceKey.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8) || `IDX${index}`;
         const filename = `INV_${sanitizedNumber}_${filenameSuffix}.pdf`;
 
         const pdfBase64 = splitPdfs.get(invoice.id || '') || originalPdfBase64;
@@ -56,29 +62,50 @@ export async function POST(request: NextRequest) {
         const attachmentUrl = `${attachmentBaseUrl}/api/attachments/${encodeURIComponent(filename)}`;
         const estimatedSizeKb = Math.round(pdfBase64.length * 0.75 / 1024);
         attachmentMeta.push({
+          invoiceId: invoiceKey,
+          invoiceNumber: rawInvoiceNumber,
           filename,
           url: attachmentUrl,
           size: `${estimatedSizeKb} KB`
         });
 
-        const customerLines = [invoice.customer?.name, invoice.customer?.address].filter(Boolean).join('\n');
-        const customerSummary = customerLines || invoice.customer?.name || '';
+        const vendorSummary = [
+          invoice.vendor?.name,
+          invoice.vendor?.address,
+          invoice.vendor?.taxId ? `Tax ID: ${invoice.vendor.taxId}` : null,
+          invoice.vendor?.email,
+          invoice.vendor?.phone
+        ].filter(Boolean).join('\n');
 
         const baseLines = invoice.lineItems.map(item => {
-          const quantity = Number.isFinite(item.quantity) ? Number(item.quantity) : 0;
-          const amount = Number.isFinite(item.amount) ? Number(item.amount) : 0;
-          const fallbackUnit = quantity ? amount / quantity : Number(item.unitPrice ?? 0);
-          const unitPrice = Number((Number.isFinite(fallbackUnit) ? fallbackUnit : 0).toFixed(4));
-          const lineSubtotal = Number(amount.toFixed(2));
+          const safeQuantity = Number.isFinite(item.quantity) && item.quantity > 0 ? Number(item.quantity) : 1;
+          const rawAmount = Number.isFinite(item.amount) ? Number(item.amount) : 0;
+          const derivedUnit = Number.isFinite(item.unitPrice) && item.unitPrice > 0
+            ? Number(item.unitPrice)
+            : rawAmount / safeQuantity;
+          const unitPrice = Number((Number.isFinite(derivedUnit) ? derivedUnit : 0).toFixed(2));
+          const grossTotal = Number((unitPrice * safeQuantity).toFixed(2));
+          const desiredSubtotal = Number(rawAmount.toFixed(2));
+
+          let discount = 0;
+          if (grossTotal > 0 && Math.abs(grossTotal - desiredSubtotal) >= 0.01) {
+            const discountPercentage = (1 - desiredSubtotal / grossTotal) * 100;
+            discount = Number(Math.min(100, Math.max(0, discountPercentage)).toFixed(2));
+          }
+
+          const adjustedSubtotal = Number((grossTotal * (1 - discount / 100)).toFixed(2));
+          const subtotal = Math.abs(adjustedSubtotal - desiredSubtotal) <= 0.01
+            ? desiredSubtotal
+            : adjustedSubtotal;
 
           return {
             product_code: item.partNumber || '',
             description: item.description,
-            quantity,
+            quantity: safeQuantity,
             unit_price: unitPrice,
-            discount: 0,
+            discount,
             taxes: [],
-            subtotal: lineSubtotal
+            subtotal,
           };
         });
 
@@ -108,7 +135,8 @@ export async function POST(request: NextRequest) {
           "Invoice-No": rawInvoiceNumber,
           "Invoice-Date": invoice.invoiceDate,
           "Customer PO Number": invoice.customerPoNumber || '',
-          "Customer": customerSummary,
+          "Customer": vendorSummary || invoice.vendor.name,
+          "Customer No": invoice.vendor.taxId || '',
           "Vendor": invoice.vendor.name,
           "Vendor Address": invoice.vendor.address,
           "Vendor No": invoice.vendor.taxId || '',

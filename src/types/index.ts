@@ -42,6 +42,9 @@ export interface Invoice {
   batchId?: string;
   taskId?: string; // Task identifier for tracking
   pdfBase64?: string; // Individual invoice PDF
+  pdfUrl?: string; // URL to retrieve generated PDF attachment
+  attachmentFilename?: string;
+  mimeType?: string;
 }
 
 export interface OdooRecord {

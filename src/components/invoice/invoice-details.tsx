@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   FileText,
   Calendar,
@@ -16,18 +16,47 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  ExternalLink,
 } from 'lucide-react';
 import { Invoice } from '@/types';
 import { formatCurrency } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 interface InvoiceDetailsProps {
   invoice: Invoice;
 }
 
 export function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
-  const taxRate = invoice.taxAmount / invoice.subtotal * 100;
+  const taxRate = invoice.subtotal ? (invoice.taxAmount / invoice.subtotal) * 100 : 0;
+  const canViewPdf = Boolean(invoice.pdfUrl || invoice.pdfBase64);
+
+  const handleViewPdf = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    if (invoice.pdfUrl) {
+      window.open(invoice.pdfUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    if (!invoice.pdfBase64) return;
+
+    try {
+      const byteCharacters = atob(invoice.pdfBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: invoice.mimeType || 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer');
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      console.error('Failed to open PDF preview', error);
+    }
+  }, [invoice.pdfBase64, invoice.pdfUrl, invoice.mimeType]);
 
   return (
     <div className="space-y-6">
@@ -42,7 +71,7 @@ export function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
             Invoice Details and Extracted Information
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <Badge
             variant={invoice.status === 'synced' ? 'success' : 'warning'}
             size="lg"
@@ -63,6 +92,16 @@ export function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
             <Badge variant="info" size="lg">
               Batch: {invoice.batchId.slice(0, 8)}
             </Badge>
+          )}
+          {canViewPdf && (
+            <Button
+              variant="outline"
+              size="sm"
+              icon={ExternalLink}
+              onClick={handleViewPdf}
+            >
+              View PDF
+            </Button>
           )}
         </div>
       </div>

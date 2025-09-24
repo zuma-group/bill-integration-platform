@@ -21,6 +21,7 @@ export default function HomePage() {
   const [showSelector, setShowSelector] = useState(false);
   const [originalPdfBase64, setOriginalPdfBase64] = useState<string | null>(null);
   const [isPushingToOdoo, setIsPushingToOdoo] = useState(false);
+  const [pushingInvoiceId, setPushingInvoiceId] = useState<string | null>(null);
   const [showResponseModal, setShowResponseModal] = useState(false);
   const [odooResponseDetails, setOdooResponseDetails] = useState<Record<string, unknown> | null>(null);
 
@@ -93,6 +94,8 @@ export default function HomePage() {
         extractedAt: new Date().toISOString(),
         batchId: ocrData.documentType === 'multiple' ? generateId() : undefined,
         taskId: ocrData.taskId, // Include taskId from OCR response
+        pdfBase64: base64,
+        mimeType,
       }));
 
       updatePipelineStep('processing', 'completed', 'Processed');
@@ -153,17 +156,97 @@ export default function HomePage() {
     setSuccess(`Processed ${selectedInvoices.length} invoice(s)`);
   };
 
-  const handleSyncAll = () => {
-    if (!extractedInvoices) return;
+  const getInvoiceKey = (invoice: Invoice) => invoice.id ?? invoice.invoiceNumber;
 
-    const invoiceIds = extractedInvoices.map(inv => inv.id || '');
-    syncToOdoo(invoiceIds);
-    setExtractedInvoices(null);
-    setSuccess('Successfully synced all invoices to Odoo');
+  const removeExtractedInvoices = (idsToRemove: Set<string>) => {
+    setExtractedInvoices((current) => {
+      if (!current) return current;
+      const remaining = current.filter(inv => !idsToRemove.has(getInvoiceKey(inv)));
+      setCurrentBatch(remaining.length > 0 ? remaining : null);
+      return remaining.length > 0 ? remaining : null;
+    });
+  };
+
+  const pushInvoicesToOdoo = async (
+    invoicesToPush: Invoice[],
+    options?: { pdfBase64Override?: string; showModal?: boolean }
+  ) => {
+    if (invoicesToPush.length === 0) {
+      throw new Error('No invoices selected for Odoo push.');
+    }
+
+    const pdfPayload = options?.pdfBase64Override
+      ?? originalPdfBase64
+      ?? invoicesToPush[0]?.pdfBase64;
+
+    if (!pdfPayload) {
+      throw new Error('Missing PDF data for the selected invoice. Re-upload the original file before pushing to Odoo.');
+    }
+
+    const response = await fetch('/api/push-to-odoo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        invoices: invoicesToPush,
+        originalPdfBase64: pdfPayload,
+      }),
+    });
+
+    const result = await response.json();
+    console.log('📥 Response from server:', result);
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to push to Odoo');
+    }
+
+    setOdooResponseDetails(result);
+
+    if (options?.showModal !== false) {
+      setShowResponseModal(true);
+    }
+
+    const attachments = Array.isArray(result.attachmentInfo)
+      ? (result.attachmentInfo as Array<{
+          invoiceId?: string;
+          invoiceNumber?: string;
+          filename?: string;
+          url?: string;
+          size?: string;
+        }>)
+      : [];
+
+    const syncTimestamp = new Date().toISOString();
+    const webhookConfigured = Boolean(result.configuration?.webhookConfigured);
+
+    if (webhookConfigured) {
+      const updatedInvoices = invoicesToPush.map((invoice) => {
+        const invoiceKey = getInvoiceKey(invoice);
+        const attachment = attachments.find(att =>
+          (att.invoiceId && att.invoiceId === invoiceKey) ||
+          (att.invoiceNumber && att.invoiceNumber === invoice.invoiceNumber)
+        );
+
+        return {
+          invoice,
+          changes: {
+            pdfUrl: attachment?.url,
+            attachmentFilename: attachment?.filename,
+            syncedAt: syncTimestamp,
+          } as Partial<Invoice>,
+        };
+      });
+
+      syncToOdoo(updatedInvoices);
+    } else {
+      console.warn('⚠️ Webhook not configured - data prepared but not delivered to Odoo');
+      setError('Odoo webhook not configured on server. Data prepared but not sent.');
+    }
+
+    return result;
   };
 
   const handlePushToOdoo = async () => {
-    if (!extractedInvoices || !originalPdfBase64) return;
+    if (!extractedInvoices) return;
 
     console.log('🚀 Starting push to Odoo...');
     console.log('Number of invoices:', extractedInvoices.length);
@@ -173,51 +256,46 @@ export default function HomePage() {
     setError(null);
 
     try {
-      const response = await fetch('/api/push-to-odoo', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          invoices: extractedInvoices,
-          originalPdfBase64,
-        }),
+      const result = await pushInvoicesToOdoo(extractedInvoices, {
+        pdfBase64Override: originalPdfBase64 ?? undefined,
       });
 
-      const result = await response.json();
-      console.log('📥 Response from server:', result);
+      const webhookConfigured = Boolean(result.configuration?.webhookConfigured);
 
-      if (!response.ok) {
-        console.error('❌ Server returned error:', result);
-        throw new Error(result.error || 'Failed to push to Odoo');
-      }
-
-      // Store response details for modal
-      setOdooResponseDetails(result);
-
-      // Check if actually sent to Odoo
-      if (result.message.includes('webhook not configured')) {
-        console.warn('⚠️ Webhook not configured - data prepared but not sent');
-        setError('Odoo webhook not configured on server. Data prepared but not sent.');
-      } else {
-        console.log('✅ Data sent to Odoo webhook');
-        console.log('Webhook URL used:', process.env.NEXT_PUBLIC_BASE_URL ? 'Configured' : 'Not visible in client');
-        console.log('Odoo response:', result.odooResponse || 'No response from Odoo');
-
+      if (webhookConfigured) {
         setSuccess(`Successfully pushed ${result.invoiceCount} invoice(s) to Odoo. Task ID: ${result.taskId}`);
-
-        // Mark invoices as synced only if actually sent
-        const invoiceIds = extractedInvoices.map(inv => inv.id || '');
-        syncToOdoo(invoiceIds);
-        setExtractedInvoices(null);
         setOriginalPdfBase64(null);
+        removeExtractedInvoices(new Set(extractedInvoices.map(getInvoiceKey)));
       }
-
-      // Show response details modal
-      setShowResponseModal(true);
     } catch (err) {
       console.error('❌ Error pushing to Odoo:', err);
       setError(`Failed to push to Odoo: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsPushingToOdoo(false);
+    }
+  };
+
+  const handlePushSingle = async (invoice: Invoice) => {
+    const key = getInvoiceKey(invoice);
+    setPushingInvoiceId(key);
+    setError(null);
+
+    try {
+      const result = await pushInvoicesToOdoo([invoice], {
+        pdfBase64Override: invoice.pdfBase64 ?? originalPdfBase64 ?? undefined,
+      });
+
+      const webhookConfigured = Boolean(result.configuration?.webhookConfigured);
+
+      if (webhookConfigured) {
+        setSuccess(`Invoice ${invoice.invoiceNumber} pushed to Odoo.`);
+        removeExtractedInvoices(new Set([key]));
+      }
+    } catch (err) {
+      console.error('❌ Error pushing invoice to Odoo:', err);
+      setError(`Failed to push invoice ${invoice.invoiceNumber}: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setPushingInvoiceId(null);
     }
   };
 
@@ -232,12 +310,19 @@ export default function HomePage() {
     }
   };
 
+  const handleSaveLocally = () => {
+    if (!extractedInvoices) return;
+    removeExtractedInvoices(new Set(extractedInvoices.map(getInvoiceKey)));
+    setOriginalPdfBase64(null);
+    setSuccess('Invoices saved locally for later syncing.');
+  };
+
   const handleTestConnection = async () => {
     console.log('🧪 Testing Odoo connection...');
     setError(null);
 
     try {
-      const response = await fetch('/api/push-to-odoo');
+      const response = await fetch('/api/push-to-odoo?taskId=diagnostic');
       const result = await response.json();
 
       console.log('Test response:', result);
@@ -306,7 +391,7 @@ export default function HomePage() {
                 <Button
                   variant="outline"
                   icon={Link}
-                  onClick={handleSyncAll}
+                  onClick={handleSaveLocally}
                 >
                   Save Locally
                 </Button>
@@ -324,9 +409,10 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {extractedInvoices.map((invoice) => (
                 <InvoiceCard
-                  key={invoice.id}
+                  key={getInvoiceKey(invoice)}
                   invoice={invoice}
-                  onSync={() => setExtractedInvoices(null)}
+                  onSendToOdoo={handlePushSingle}
+                  isSending={pushingInvoiceId === getInvoiceKey(invoice)}
                 />
               ))}
             </div>
@@ -382,11 +468,22 @@ export default function HomePage() {
                 <div>
                   <h4 className="font-semibold mb-2">Attachments Included</h4>
                   <div className="space-y-2">
-                    {(odooResponseDetails.attachmentInfo as Array<{filename: string; size: string; url?: string}>).map((info, idx) => (
+                    {(odooResponseDetails.attachmentInfo as Array<{
+                      filename: string;
+                      size: string;
+                      url?: string;
+                      invoiceId?: string;
+                      invoiceNumber?: string;
+                    }>).map((info, idx) => (
                       <div key={idx} className="flex items-center justify-between gap-2 rounded-lg border border-accent-hover px-3 py-2 text-sm">
                         <div>
-                          <div className="font-medium text-primary-text">{info.filename}</div>
-                          <div className="text-xs text-secondary-text">{info.size}</div>
+                          <div className="font-medium text-primary-text">
+                            {info.invoiceNumber ? `Invoice ${info.invoiceNumber}` : info.filename}
+                          </div>
+                          <div className="text-xs text-secondary-text">
+                            {info.size}
+                            {info.filename ? ` • ${info.filename}` : ''}
+                          </div>
                         </div>
                         {info.url ? (
                           <a
