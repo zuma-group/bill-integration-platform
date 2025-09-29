@@ -188,7 +188,7 @@ export default function HomePage() {
       throw new Error('Missing PDF data for the selected invoice. Re-upload the original file before pushing to Odoo.');
     }
 
-    // Revert to JSON for now due to Vercel FormData issues
+    // Send as JSON (FormData has issues on Vercel)
     const response = await fetch('/api/push-to-odoo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
