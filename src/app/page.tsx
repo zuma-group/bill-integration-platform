@@ -162,10 +162,15 @@ export default function HomePage() {
     setExtractedInvoices((current) => {
       if (!current) return current;
       const remaining = current.filter(inv => !idsToRemove.has(getInvoiceKey(inv)));
-      setCurrentBatch(remaining.length > 0 ? remaining : null);
+      // Don't call setCurrentBatch here - use effect instead
       return remaining.length > 0 ? remaining : null;
     });
   };
+
+  // Update currentBatch when extractedInvoices changes
+  React.useEffect(() => {
+    setCurrentBatch(extractedInvoices);
+  }, [extractedInvoices, setCurrentBatch]);
 
   const pushInvoicesToOdoo = async (
     invoicesToPush: Invoice[],
@@ -183,6 +188,7 @@ export default function HomePage() {
       throw new Error('Missing PDF data for the selected invoice. Re-upload the original file before pushing to Odoo.');
     }
 
+    // Revert to JSON for now due to Vercel FormData issues
     const response = await fetch('/api/push-to-odoo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

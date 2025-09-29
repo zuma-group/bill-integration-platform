@@ -162,10 +162,12 @@ export interface OdooBillPayload {
       subtotal: number;
     }>;
 
-    // Attachments with base64 data
+    // Attachments with URL for download (NO BASE64!)
     attachments: Array<{
       filename: string;
-      content: string;  // Base64 encoded PDF data
+      url?: string;      // URL to download the PDF
+      content?: string;  // Optional for backwards compatibility
+      size?: number;     // File size in KB
     }>;
   }>;
 }

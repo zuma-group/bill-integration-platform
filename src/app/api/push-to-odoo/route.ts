@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
+import { storePdf } from '@/lib/pdf-storage';
 import { OdooBillPayload, Invoice } from '@/types';
 
 export const dynamic = 'force-dynamic'; // Prevent caching
@@ -11,19 +12,82 @@ export async function POST(request: NextRequest) {
   console.log('='.repeat(50));
 
   try {
-    const body = await request.json();
-    const { invoices, originalPdfBase64 } = body;
+    // Check content type
+    const contentType = request.headers.get('content-type') || '';
+    console.log('Request Content-Type:', contentType);
 
-    if (!invoices || !Array.isArray(invoices) || invoices.length === 0) {
+    let invoices: Invoice[];
+    let originalPdfBase64: string;
+
+    // Handle both FormData and JSON for compatibility
+    if (contentType.includes('multipart/form-data')) {
+      // Parse FormData
+      let formData: FormData;
+      try {
+        formData = await request.formData();
+      } catch (formDataError) {
+        console.error('FormData parsing error:', formDataError);
+        return NextResponse.json(
+          { error: `Failed to parse FormData: ${formDataError}` },
+          { status: 500 }
+        );
+      }
+
+      // Get invoices data from FormData
+      const invoicesJson = formData.get('invoices') as string;
+      if (!invoicesJson) {
+        return NextResponse.json(
+          { error: 'No invoices data provided in FormData' },
+          { status: 400 }
+        );
+      }
+
+      invoices = JSON.parse(invoicesJson) as Invoice[];
+
+      // Get PDF file from FormData
+      const pdfFile = formData.get('pdf') as File;
+      if (!pdfFile) {
+        return NextResponse.json(
+          { error: 'No PDF file provided in FormData' },
+          { status: 400 }
+        );
+      }
+
+      // Convert PDF file to base64
+      const pdfBytes = await pdfFile.arrayBuffer();
+      const pdfBuffer = Buffer.from(pdfBytes);
+      originalPdfBase64 = pdfBuffer.toString('base64');
+
+    } else if (contentType.includes('application/json')) {
+      // Fallback to JSON parsing (original method)
+      const body = await request.json();
+      invoices = body.invoices;
+      originalPdfBase64 = body.originalPdfBase64;
+
+      if (!invoices || !Array.isArray(invoices) || invoices.length === 0) {
+        return NextResponse.json(
+          { error: 'No invoices provided in JSON' },
+          { status: 400 }
+        );
+      }
+
+      if (!originalPdfBase64) {
+        return NextResponse.json(
+          { error: 'No PDF provided in JSON' },
+          { status: 400 }
+        );
+      }
+    } else {
       return NextResponse.json(
-        { error: 'No invoices provided' },
+        { error: `Unsupported Content-Type: ${contentType}. Expected multipart/form-data or application/json` },
         { status: 400 }
       );
     }
 
-    if (!originalPdfBase64) {
+    // Validate invoices
+    if (!Array.isArray(invoices) || invoices.length === 0) {
       return NextResponse.json(
-        { error: 'No PDF provided' },
+        { error: 'Invalid or empty invoices array' },
         { status: 400 }
       );
     }
@@ -120,6 +184,9 @@ export async function POST(request: NextRequest) {
 
         const totalAmountValue = Number((subtotalValue + taxAmountValue).toFixed(2));
 
+        // Keep PDF base64 for later conversion to file when sending to Odoo
+        // But DON'T include it in the invoice data
+
         return {
           // Main invoice fields (capitalized as Odoo expects)
           "Invoice-No": rawInvoiceNumber,
@@ -149,10 +216,9 @@ export async function POST(request: NextRequest) {
           // Line items
           lines,
 
-          // Attachments embedded as base64 content
+          // Just send filename reference - actual PDF will be sent as separate file
           attachments: [{
-            filename,
-            content: pdfBase64
+            filename
           }]
         };
       })
@@ -176,21 +242,42 @@ export async function POST(request: NextRequest) {
         const payloadStr = JSON.stringify(odooPayload);
         console.log('Payload size:', (payloadStr.length / 1024).toFixed(2), 'KB');
 
-        // Log a sample of the payload (attachments already URLs)
-        console.log('\nPayload structure:');
+        // Log a sample of the payload
+        console.log('\nPayload structure (invoice data only, PDFs sent separately):');
         console.log(JSON.stringify(odooPayload, null, 2));
 
+        // Create FormData to send invoice data and PDF files separately
+        const formData = new FormData();
+
+        // Add invoice data as JSON in 'data' field
+        formData.append('data', JSON.stringify(odooPayload));
+
+        // Add PDF files as separate file attachments
+        odooPayload.invoices.forEach((invoice, index) => {
+          const invoiceRecord = invoices[index];
+          const pdfBase64 = splitPdfs.get(invoiceRecord.id || '') || originalPdfBase64;
+          const pdfBuffer = Buffer.from(pdfBase64, 'base64');
+          const filename = invoice.attachments[0].filename;
+
+          // Create a File object from the buffer
+          const file = new File([pdfBuffer], filename, { type: 'application/pdf' });
+          formData.append(`file_${index}`, file);
+
+          console.log(`Adding PDF file_${index}: ${filename}`);
+        });
+
+        // Headers for multipart (don't set Content-Type, let fetch set it with boundary)
         const headers = {
-          'Content-Type': 'application/json',
           ...(process.env.ODOO_API_KEY && { 'X-API-Key': process.env.ODOO_API_KEY })
         };
 
         console.log('\nRequest headers:', headers);
+        console.log('Sending as multipart/form-data with', odooPayload.invoices.length, 'PDF files');
 
         const odooResponse = await fetch(process.env.ODOO_WEBHOOK_URL, {
           method: 'POST',
           headers,
-          body: JSON.stringify(odooPayload)
+          body: formData
         });
 
         console.log('\n📡 Response received from Odoo:');
