@@ -166,11 +166,10 @@ export async function POST(request: NextRequest) {
           // Line items
           lines,
 
-          // For multipart, we'll add attachments with empty content
-          // The actual files will be sent separately in the FormData
+          // Include the base64 content for Odoo (they want JSON, not multipart)
           attachments: [{
             filename,
-            content: '' // Empty since we're sending files separately
+            content: pdfBase64 // Odoo expects base64 in JSON
           }]
         };
       })
@@ -198,45 +197,18 @@ export async function POST(request: NextRequest) {
         console.log('\nPayload structure:');
         console.log(JSON.stringify(odooPayload, null, 2));
 
-        // Create FormData for Odoo
-        const odooFormData = new FormData();
-
-        // Add invoice data as JSON (without the base64 content)
-        const invoicesWithoutPdf = odooPayload.invoices.map(inv => {
-          // Keep structure but clear the content since files are sent separately
-          return {
-            ...inv,
-            attachments: inv.attachments.map(att => ({
-              filename: att.filename,
-              content: '' // Empty since files are sent separately
-            }))
-          };
-        });
-
-        odooFormData.append('data', JSON.stringify({ invoices: invoicesWithoutPdf }));
-
-        // Add PDF files - each invoice gets its own PDF file
-        invoices.forEach((invoice, index) => {
-          // Get the split PDF for this invoice, or use the original if single invoice
-          const pdfBase64 = splitPdfs.get(invoice.id || '') || originalPdfBase64;
-          const pdfBytes = Buffer.from(pdfBase64, 'base64');
-          const filename = odooPayload.invoices[index].attachments[0].filename;
-          // In Node.js, we can append Buffer directly as a File-like object
-          odooFormData.append(`file_${index}`, new File([pdfBytes], filename, { type: 'application/pdf' }));
-        });
-
+        // Odoo expects JSON, not multipart
         const headers = {
-          // Don't set Content-Type for FormData - let the browser set it with boundary
+          'Content-Type': 'application/json',
           ...(process.env.ODOO_API_KEY && { 'X-API-Key': process.env.ODOO_API_KEY })
         };
 
         console.log('\nRequest headers:', headers);
-        console.log('Sending as multipart/form-data with', odooPayload.invoices.length, 'PDF files');
 
         const odooResponse = await fetch(process.env.ODOO_WEBHOOK_URL, {
           method: 'POST',
           headers,
-          body: odooFormData
+          body: JSON.stringify(odooPayload)
         });
 
         console.log('\n📡 Response received from Odoo:');
