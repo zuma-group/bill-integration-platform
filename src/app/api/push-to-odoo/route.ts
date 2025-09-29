@@ -11,22 +11,39 @@ export async function POST(request: NextRequest) {
   console.log('='.repeat(50));
 
   try {
-    const body = await request.json();
-    const { invoices, originalPdfBase64 } = body;
+    // Parse FormData instead of JSON
+    const formData = await request.formData();
 
-    if (!invoices || !Array.isArray(invoices) || invoices.length === 0) {
+    // Get invoices data from FormData
+    const invoicesJson = formData.get('invoices') as string;
+    if (!invoicesJson) {
+      return NextResponse.json(
+        { error: 'No invoices data provided' },
+        { status: 400 }
+      );
+    }
+
+    const invoices = JSON.parse(invoicesJson) as Invoice[];
+    if (!Array.isArray(invoices) || invoices.length === 0) {
       return NextResponse.json(
         { error: 'No invoices provided' },
         { status: 400 }
       );
     }
 
-    if (!originalPdfBase64) {
+    // Get PDF file from FormData
+    const pdfFile = formData.get('pdf') as File;
+    if (!pdfFile) {
       return NextResponse.json(
-        { error: 'No PDF provided' },
+        { error: 'No PDF file provided' },
         { status: 400 }
       );
     }
+
+    // Convert PDF file to base64
+    const pdfBytes = await pdfFile.arrayBuffer();
+    const pdfBuffer = Buffer.from(pdfBytes);
+    const originalPdfBase64 = pdfBuffer.toString('base64');
 
     // Generate unique task ID
     const taskId = generateTaskId();
@@ -149,10 +166,10 @@ export async function POST(request: NextRequest) {
           // Line items
           lines,
 
-          // Attachments embedded as base64 content
+          // Include the base64 content for Odoo (they want JSON, not multipart)
           attachments: [{
             filename,
-            content: pdfBase64
+            content: pdfBase64 // Odoo expects base64 in JSON
           }]
         };
       })
@@ -180,6 +197,7 @@ export async function POST(request: NextRequest) {
         console.log('\nPayload structure:');
         console.log(JSON.stringify(odooPayload, null, 2));
 
+        // Odoo expects JSON, not multipart
         const headers = {
           'Content-Type': 'application/json',
           ...(process.env.ODOO_API_KEY && { 'X-API-Key': process.env.ODOO_API_KEY })
