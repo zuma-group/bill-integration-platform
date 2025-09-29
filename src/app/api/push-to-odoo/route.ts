@@ -106,8 +106,8 @@ export async function POST(request: NextRequest) {
       url?: string;
     }> = [];
 
-    // Transform data to match Odoo's exact format
-    const odooPayload: OdooBillPayload = {
+    // Transform data to match original working format
+    const odooPayload = {
       invoices: invoices.map((invoice: Invoice, index) => {
         const invoiceKey = invoice.id ?? invoice.invoiceNumber ?? generateTaskId();
         const rawInvoiceNumber = invoice.invoiceNumber || `INV-${index + 1}`;
@@ -195,38 +195,48 @@ export async function POST(request: NextRequest) {
         // But DON'T include it in the invoice data
 
         return {
-          // Main invoice fields (capitalized as Odoo expects)
-          "Invoice-No": rawInvoiceNumber,
-          "Invoice-Date": invoice.invoiceDate,
-          "Customer PO Number": invoice.customerPoNumber || '',
-          "Customer": vendorSummary || invoice.vendor.name,
-          "Customer No": invoice.vendor.taxId || '',
-          "Vendor": invoice.vendor.name,
-          "Vendor Address": invoice.vendor.address,
-          "Vendor No": invoice.vendor.taxId || '',
-          "Bill-To": invoice.customer.name,
-          "Bill-To Address": invoice.customer.address,
-          "Payment Terms": invoice.paymentTerms || 'NET 30 DAYS',
-          "Subtotal": subtotalValue.toFixed(2),
-          "Tax Amount": taxAmountValue.toFixed(2),
-          "Total Amount": totalAmountValue.toFixed(2),
-          "Currency": invoice.currency || 'USD',
-          "invoice-or-credit": 'INVOICE' as const,
+          // Use original working format (camelCase, nested objects)
+          invoiceNumber: rawInvoiceNumber,
+          customerPoNumber: invoice.customerPoNumber || '',
+          invoiceDate: invoice.invoiceDate,
+          dueDate: invoice.dueDate,
+          vendor: {
+            name: invoice.vendor.name,
+            address: invoice.vendor.address,
+            taxId: invoice.vendor.taxId,
+            email: invoice.vendor.email,
+            phone: invoice.vendor.phone
+          },
+          customer: {
+            name: invoice.customer.name,
+            address: invoice.customer.address
+          },
+          lineItems: invoice.lineItems.map(item => ({
+            description: item.description,
+            partNumber: item.partNumber,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            amount: item.amount,
+            tax: item.tax
+          })),
+          subtotal: subtotalValue,
+          taxAmount: taxAmountValue,
+          total: totalAmountValue,
+          currency: invoice.currency || 'USD',
+          paymentTerms: invoice.paymentTerms || 'NET 30 DAYS',
+          pageNumber: invoice.pageNumber,
+          pageNumbers: invoice.pageNumbers,
+          id: invoice.id,
+          status: invoice.status,
+          extractedAt: invoice.extractedAt,
+          taskId: invoice.taskId,
+          batchId: invoice.batchId,
 
-          // Optional fields (set defaults)
-          "Carrier": '',
-          "Date Shipped": '',
-          "Sales Order No": '',
-          "Incoterms": '',
-          "Freight": '',
-
-          // Line items
-          lines,
-
-          // Send filename + URL; leave base64 optional for fallback
+          // Send filename + URL + base64 content for maximum compatibility
           attachments: [{
             filename,
             url: fileUrl,
+            content: pdfBase64
           }]
         };
       })
@@ -244,7 +254,7 @@ export async function POST(request: NextRequest) {
         console.log('\n🚀 ATTEMPTING TO SEND TO ODOO...');
         console.log('Webhook URL:', process.env.ODOO_WEBHOOK_URL);
         console.log('Number of invoices:', odooPayload.invoices.length);
-        console.log('Invoice numbers:', odooPayload.invoices.map(inv => inv["Invoice-No"]));
+        console.log('Invoice numbers:', odooPayload.invoices.map(inv => inv.invoiceNumber));
 
         // Log payload size
         const payloadStr = JSON.stringify(odooPayload);
