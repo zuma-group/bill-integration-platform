@@ -232,8 +232,7 @@ export async function POST(request: NextRequest) {
           taskId: invoice.taskId,
           batchId: invoice.batchId,
 
-          // Send URL in pdfBase64 field (as string, not base64 data) + attachments for compatibility
-          pdfBase64: fileUrl,
+          // Send attachments with url only (Odoo will fetch from URL)
           attachments: [{
             filename,
             url: fileUrl
