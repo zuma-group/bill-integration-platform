@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
           subtotal: subtotalValue,
           taxAmount: taxAmountValue,
           total: totalAmountValue,
-          currency: invoice.currency || 'USD',
+          currency: 'USD',  // Force to USD to ensure valid currency_id mapping in Odoo
           paymentTerms: invoice.paymentTerms || 'NET 30 DAYS',
           pageNumber: invoice.pageNumber,
           pageNumbers: invoice.pageNumbers,
