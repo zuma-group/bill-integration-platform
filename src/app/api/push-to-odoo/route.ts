@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
-import { storePdf } from '@/lib/pdf-storage';
 import { OdooBillPayload, Invoice } from '@/types';
 
 export const dynamic = 'force-dynamic'; // Prevent caching
