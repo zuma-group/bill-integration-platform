@@ -232,7 +232,8 @@ export async function POST(request: NextRequest) {
           taskId: invoice.taskId,
           batchId: invoice.batchId,
 
-          // Send filename + URL only (no base64 fallback)
+          // Send URL in pdfBase64 field (as string, not base64 data) + attachments for compatibility
+          pdfBase64: fileUrl,
           attachments: [{
             filename,
             url: fileUrl
