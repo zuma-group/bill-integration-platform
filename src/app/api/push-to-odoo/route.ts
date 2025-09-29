@@ -249,8 +249,8 @@ export async function POST(request: NextRequest) {
         // Create FormData to send invoice data and PDF files separately
         const formData = new FormData();
 
-        // Add invoice data as JSON in 'data' field
-        formData.append('data', JSON.stringify(odooPayload));
+        // Add invoice data as JSON in 'invoices' field (what Odoo expects)
+        formData.append('invoices', JSON.stringify(odooPayload));
 
         // Add PDF files as separate file attachments
         odooPayload.invoices.forEach((invoice, index) => {
