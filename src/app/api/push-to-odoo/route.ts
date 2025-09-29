@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
 import { OdooBillPayload, Invoice } from '@/types';
+import { storePdf } from '@/lib/pdf-storage';
 
 export const dynamic = 'force-dynamic'; // Prevent caching
 
@@ -102,6 +103,7 @@ export async function POST(request: NextRequest) {
       invoiceNumber: string;
       filename: string;
       size: string;
+      url?: string;
     }> = [];
 
     // Transform data to match Odoo's exact format
@@ -115,11 +117,17 @@ export async function POST(request: NextRequest) {
 
         const pdfBase64 = splitPdfs.get(invoice.id || '') || originalPdfBase64;
         const estimatedSizeKb = Math.round(pdfBase64.length * 0.75 / 1024);
+
+        // Store PDF in memory and generate URL for Odoo to fetch
+        storePdf(filename, pdfBase64, 'application/pdf');
+        const fileUrl = `/api/attachments/${encodeURIComponent(filename)}`;
+
         attachmentMeta.push({
           invoiceId: invoiceKey,
           invoiceNumber: rawInvoiceNumber,
           filename,
-          size: `${estimatedSizeKb} KB`
+          size: `${estimatedSizeKb} KB`,
+          url: fileUrl
         });
 
         const vendorSummary = [
@@ -215,9 +223,10 @@ export async function POST(request: NextRequest) {
           // Line items
           lines,
 
-          // Just send filename reference - actual PDF will be sent as separate file
+          // Send filename + URL; leave base64 optional for fallback
           attachments: [{
-            filename
+            filename,
+            url: fileUrl,
           }]
         };
       })
@@ -245,38 +254,34 @@ export async function POST(request: NextRequest) {
         console.log('\nPayload structure (invoice data only, PDFs sent separately):');
         console.log(JSON.stringify(odooPayload, null, 2));
 
-        // Create FormData to send invoice data and PDF files separately
-        const formData = new FormData();
+        // Odoo expects JSON with 'invoices' array - send full payload
+        const odooRequestPayload = odooPayload;
 
-        // Add invoice data as JSON in 'invoices' field (what Odoo expects)
-        formData.append('invoices', JSON.stringify(odooPayload));
-
-        // Add PDF files as separate file attachments
-        odooPayload.invoices.forEach((invoice, index) => {
-          const invoiceRecord = invoices[index];
-          const pdfBase64 = splitPdfs.get(invoiceRecord.id || '') || originalPdfBase64;
-          const pdfBuffer = Buffer.from(pdfBase64, 'base64');
-          const filename = invoice.attachments[0].filename;
-
-          // Create a File object from the buffer
-          const file = new File([pdfBuffer], filename, { type: 'application/pdf' });
-          formData.append(`file_${index}`, file);
-
-          console.log(`Adding PDF file_${index}: ${filename}`);
-        });
-
-        // Headers for multipart (don't set Content-Type, let fetch set it with boundary)
+        // Embed PDF base64 into each invoice attachment (as per original working payload)
+        for (let i = 0; i < odooRequestPayload.invoices.length; i++) {
+          const srcInvoice = invoices[i];
+          const perInvoicePdfBase64 = splitPdfs.get(srcInvoice.id || '') || originalPdfBase64;
+          const attachment = odooRequestPayload.invoices[i].attachments?.[0];
+          if (attachment) {
+            attachment.content = perInvoicePdfBase64;
+          }
+        }
+        
+        // Headers for JSON request
         const headers = {
+          'Content-Type': 'application/json',
           ...(process.env.ODOO_API_KEY && { 'X-API-Key': process.env.ODOO_API_KEY })
         };
 
         console.log('\nRequest headers:', headers);
-        console.log('Sending as multipart/form-data with', odooPayload.invoices.length, 'PDF files');
+        console.log("Sending JSON payload with 'invoices' array");
+        console.log('Invoices count:', odooRequestPayload.invoices.length);
+        console.log('First attachment filename:', odooRequestPayload.invoices[0]?.attachments?.[0]?.filename);
 
         const odooResponse = await fetch(process.env.ODOO_WEBHOOK_URL, {
           method: 'POST',
           headers,
-          body: formData
+          body: JSON.stringify(odooRequestPayload)
         });
 
         console.log('\n📡 Response received from Odoo:');
