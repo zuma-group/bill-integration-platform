@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Multipart Upload</title>
+</head>
+<body>
+    <h1>Test Multipart File Upload</h1>
+    <p>This page tests the new multipart/form-data implementation</p>
+
+    <button onclick="testUpload()">Test Upload</button>
+    <pre id="result"></pre>
+
+    <script>
+        async function testUpload() {
+            const resultEl = document.getElementById('result');
+            resultEl.textContent = 'Testing...';
+
+            try {
+                // Create test invoice data
+                const invoices = [{
+                    id: 'test-123',
+                    invoiceNumber: 'TEST-001',
+                    invoiceDate: '2025-01-29',
+                    customer: {
+                        name: 'Test Customer',
+                        address: '123 Test St'
+                    },
+                    vendor: {
+                        name: 'Test Vendor',
+                        address: '456 Vendor Ave',
+                        taxId: 'TAX123'
+                    },
+                    lineItems: [{
+                        description: 'Test Item',
+                        quantity: 1,
+                        amount: 100
+                    }],
+                    subtotal: 100,
+                    taxAmount: 10,
+                    totalAmount: 110
+                }];
+
+                // Create a test PDF (small binary data)
+                const pdfContent = '%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> /MediaBox [0 0 612 792] /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 44 >>\nstream\nBT\n/F1 12 Tf\n100 700 Td\n(Test Invoice) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f\n0000000009 00000 n\n0000000058 00000 n\n0000000115 00000 n\n0000000274 00000 n\ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n366\n%%EOF';
+
+                // Create FormData
+                const formData = new FormData();
+                formData.append('invoices', JSON.stringify(invoices));
+
+                // Create PDF blob
+                const pdfBlob = new Blob([pdfContent], { type: 'application/pdf' });
+                formData.append('pdf', pdfBlob, 'test-invoice.pdf');
+
+                // Send to API
+                const response = await fetch('/api/push-to-odoo', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                resultEl.textContent = JSON.stringify(result, null, 2);
+
+            } catch (error) {
+                resultEl.textContent = 'Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

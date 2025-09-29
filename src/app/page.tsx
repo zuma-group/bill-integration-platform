@@ -162,10 +162,15 @@ export default function HomePage() {
     setExtractedInvoices((current) => {
       if (!current) return current;
       const remaining = current.filter(inv => !idsToRemove.has(getInvoiceKey(inv)));
-      setCurrentBatch(remaining.length > 0 ? remaining : null);
+      // Don't call setCurrentBatch here - use effect instead
       return remaining.length > 0 ? remaining : null;
     });
   };
+
+  // Update currentBatch when extractedInvoices changes
+  React.useEffect(() => {
+    setCurrentBatch(extractedInvoices);
+  }, [extractedInvoices, setCurrentBatch]);
 
   const pushInvoicesToOdoo = async (
     invoicesToPush: Invoice[],
@@ -183,13 +188,28 @@ export default function HomePage() {
       throw new Error('Missing PDF data for the selected invoice. Re-upload the original file before pushing to Odoo.');
     }
 
+    // Create FormData instead of JSON
+    const formData = new FormData();
+
+    // Add invoice data as JSON string
+    formData.append('invoices', JSON.stringify(invoicesToPush));
+
+    // Convert base64 PDF to blob and append as file
+    const pdfBytes = Uint8Array.from(atob(pdfPayload), c => c.charCodeAt(0));
+    const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+
+    // For single invoice, use the invoice filename
+    // For multiple invoices, use a generic filename (will be split server-side)
+    const filename = invoicesToPush.length === 1
+      ? `INV_${invoicesToPush[0].invoiceNumber?.replace(/[^\w-]/g, '_')}.pdf`
+      : 'combined_invoices.pdf';
+
+    formData.append('pdf', pdfBlob, filename);
+
     const response = await fetch('/api/push-to-odoo', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        invoices: invoicesToPush,
-        originalPdfBase64: pdfPayload,
-      }),
+      body: formData,
+      // Note: Don't set Content-Type header - browser will set it with boundary
     });
 
     const result = await response.json();

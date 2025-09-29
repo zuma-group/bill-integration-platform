@@ -11,22 +11,39 @@ export async function POST(request: NextRequest) {
   console.log('='.repeat(50));
 
   try {
-    const body = await request.json();
-    const { invoices, originalPdfBase64 } = body;
+    // Parse FormData instead of JSON
+    const formData = await request.formData();
 
-    if (!invoices || !Array.isArray(invoices) || invoices.length === 0) {
+    // Get invoices data from FormData
+    const invoicesJson = formData.get('invoices') as string;
+    if (!invoicesJson) {
+      return NextResponse.json(
+        { error: 'No invoices data provided' },
+        { status: 400 }
+      );
+    }
+
+    const invoices = JSON.parse(invoicesJson) as Invoice[];
+    if (!Array.isArray(invoices) || invoices.length === 0) {
       return NextResponse.json(
         { error: 'No invoices provided' },
         { status: 400 }
       );
     }
 
-    if (!originalPdfBase64) {
+    // Get PDF file from FormData
+    const pdfFile = formData.get('pdf') as File;
+    if (!pdfFile) {
       return NextResponse.json(
-        { error: 'No PDF provided' },
+        { error: 'No PDF file provided' },
         { status: 400 }
       );
     }
+
+    // Convert PDF file to base64
+    const pdfBytes = await pdfFile.arrayBuffer();
+    const pdfBuffer = Buffer.from(pdfBytes);
+    const originalPdfBase64 = pdfBuffer.toString('base64');
 
     // Generate unique task ID
     const taskId = generateTaskId();
@@ -149,10 +166,11 @@ export async function POST(request: NextRequest) {
           // Line items
           lines,
 
-          // Attachments embedded as base64 content
+          // For multipart, we'll add attachments with empty content
+          // The actual files will be sent separately in the FormData
           attachments: [{
             filename,
-            content: pdfBase64
+            content: '' // Empty since we're sending files separately
           }]
         };
       })
@@ -180,17 +198,45 @@ export async function POST(request: NextRequest) {
         console.log('\nPayload structure:');
         console.log(JSON.stringify(odooPayload, null, 2));
 
+        // Create FormData for Odoo
+        const odooFormData = new FormData();
+
+        // Add invoice data as JSON (without the base64 content)
+        const invoicesWithoutPdf = odooPayload.invoices.map(inv => {
+          // Keep structure but clear the content since files are sent separately
+          return {
+            ...inv,
+            attachments: inv.attachments.map(att => ({
+              filename: att.filename,
+              content: '' // Empty since files are sent separately
+            }))
+          };
+        });
+
+        odooFormData.append('data', JSON.stringify({ invoices: invoicesWithoutPdf }));
+
+        // Add PDF files - each invoice gets its own PDF file
+        invoices.forEach((invoice, index) => {
+          // Get the split PDF for this invoice, or use the original if single invoice
+          const pdfBase64 = splitPdfs.get(invoice.id || '') || originalPdfBase64;
+          const pdfBytes = Buffer.from(pdfBase64, 'base64');
+          const filename = odooPayload.invoices[index].attachments[0].filename;
+          // In Node.js, we can append Buffer directly as a File-like object
+          odooFormData.append(`file_${index}`, new File([pdfBytes], filename, { type: 'application/pdf' }));
+        });
+
         const headers = {
-          'Content-Type': 'application/json',
+          // Don't set Content-Type for FormData - let the browser set it with boundary
           ...(process.env.ODOO_API_KEY && { 'X-API-Key': process.env.ODOO_API_KEY })
         };
 
         console.log('\nRequest headers:', headers);
+        console.log('Sending as multipart/form-data with', odooPayload.invoices.length, 'PDF files');
 
         const odooResponse = await fetch(process.env.ODOO_WEBHOOK_URL, {
           method: 'POST',
           headers,
-          body: JSON.stringify(odooPayload)
+          body: odooFormData
         });
 
         console.log('\n📡 Response received from Odoo:');
