@@ -232,11 +232,10 @@ export async function POST(request: NextRequest) {
           taskId: invoice.taskId,
           batchId: invoice.batchId,
 
-          // Send filename + URL + base64 content for maximum compatibility
+          // Send filename + URL only (no base64 fallback)
           attachments: [{
             filename,
-            url: fileUrl,
-            content: pdfBase64
+            url: fileUrl
           }]
         };
       })
@@ -267,15 +266,7 @@ export async function POST(request: NextRequest) {
         // Odoo expects JSON with 'invoices' array - send full payload
         const odooRequestPayload = odooPayload;
 
-        // Embed PDF base64 into each invoice attachment (as per original working payload)
-        for (let i = 0; i < odooRequestPayload.invoices.length; i++) {
-          const srcInvoice = invoices[i];
-          const perInvoicePdfBase64 = splitPdfs.get(srcInvoice.id || '') || originalPdfBase64;
-          const attachment = odooRequestPayload.invoices[i].attachments?.[0];
-          if (attachment) {
-            attachment.content = perInvoicePdfBase64;
-          }
-        }
+        // PDFs are already stored and URLs are set - no need to embed base64
         
         // Headers for JSON request
         const headers = {
