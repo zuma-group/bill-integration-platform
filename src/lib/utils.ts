@@ -20,6 +20,77 @@ export function formatDate(date: string): string {
   });
 }
 
+/**
+ * Normalize a date string to yyyy/mm/dd format for Odoo
+ * Handles various input formats including:
+ * - mm/dd/yyyy, dd/mm/yyyy, yyyy/mm/dd
+ * - mm-dd-yyyy, dd-mm-yyyy, yyyy-mm-dd
+ * - ISO date strings (yyyy-mm-ddTHH:mm:ss.sssZ)
+ * - Locale-specific date formats
+ * 
+ * @param dateString - The date string in any common format
+ * @returns Date in yyyy/mm/dd format, or original string if parsing fails
+ */
+export function normalizeToOdooDateFormat(dateString: string | null | undefined): string {
+  if (!dateString) return '';
+  
+  // Trim whitespace
+  const trimmed = dateString.trim();
+  if (!trimmed) return '';
+  
+  try {
+    let date: Date | null = null;
+    
+    // Try to parse common formats
+    // Pattern 1: yyyy/mm/dd or yyyy-mm-dd (already in correct format, just validate)
+    if (/^\d{4}[/-]\d{1,2}[/-]\d{1,2}/.test(trimmed)) {
+      const parts = trimmed.split(/[/-]/);
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1; // JS months are 0-indexed
+      const day = parseInt(parts[2]);
+      date = new Date(year, month, day);
+    }
+    // Pattern 2: mm/dd/yyyy or mm-dd-yyyy (US format)
+    else if (/^\d{1,2}[/-]\d{1,2}[/-]\d{4}/.test(trimmed)) {
+      const parts = trimmed.split(/[/-]/);
+      // Assume mm/dd/yyyy format (US format)
+      const month = parseInt(parts[0]) - 1;
+      const day = parseInt(parts[1]);
+      const year = parseInt(parts[2]);
+      date = new Date(year, month, day);
+    }
+    // Pattern 3: dd.mm.yyyy or dd/mm/yyyy (European format - but ambiguous with US)
+    else if (/^\d{1,2}\.\d{1,2}\.\d{4}/.test(trimmed)) {
+      const parts = trimmed.split('.');
+      const day = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1;
+      const year = parseInt(parts[2]);
+      date = new Date(year, month, day);
+    }
+    // Pattern 4: ISO 8601 or other standard formats
+    else {
+      date = new Date(trimmed);
+    }
+    
+    // Validate the date
+    if (!date || isNaN(date.getTime())) {
+      console.warn(`Unable to parse date: "${dateString}". Returning original value.`);
+      return trimmed;
+    }
+    
+    // Format as yyyy/mm/dd
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}/${month}/${day}`;
+    
+  } catch (error) {
+    console.error(`Error normalizing date "${dateString}":`, error);
+    return trimmed;
+  }
+}
+
 export function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();

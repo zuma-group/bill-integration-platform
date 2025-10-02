@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
 import { OdooBillPayload, Invoice } from '@/types';
 import { storePdf } from '@/lib/pdf-storage';
+import { normalizeToOdooDateFormat } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic'; // Prevent caching
 
@@ -198,8 +199,8 @@ export async function POST(request: NextRequest) {
           // Use original working format (camelCase, nested objects)
           invoiceNumber: rawInvoiceNumber,
           customerPoNumber: invoice.customerPoNumber || '',
-          invoiceDate: invoice.invoiceDate,
-          dueDate: invoice.dueDate,
+          invoiceDate: normalizeToOdooDateFormat(invoice.invoiceDate),
+          dueDate: normalizeToOdooDateFormat(invoice.dueDate),
           vendor: {
             name: invoice.vendor.name,
             address: invoice.vendor.address,
