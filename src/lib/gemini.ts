@@ -135,6 +135,7 @@ export async function extractInvoiceData(base64: string, mimeType: string): Prom
         ],
         "subtotal": number,
         "taxAmount": number,
+        "taxType": "string" or null (Extract tax type - look for: GST, PST, GST 5%, PST 7%, etc. Return exact text as shown on invoice),
         "total": number,
         "currency": "string",
         "paymentTerms": "string" or null,

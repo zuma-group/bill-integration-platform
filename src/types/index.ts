@@ -31,6 +31,7 @@ export interface Invoice {
   lineItems: LineItem[];
   subtotal: number;
   taxAmount: number;
+  taxType?: string; // Tax type: GST, PST, etc.
   total: number;
   currency: string;
   paymentTerms: string;

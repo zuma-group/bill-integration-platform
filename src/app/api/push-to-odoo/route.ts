@@ -179,9 +179,19 @@ export async function POST(request: NextRequest) {
         const lines = [...baseLines];
 
         if (Math.abs(taxAmountValue) > 0) {
+          // Determine tax description based on tax type
+          let taxDescription = 'Sales Tax';
+          const taxType = invoice.taxType?.toUpperCase() || '';
+          
+          if (taxType.includes('GST')) {
+            taxDescription = 'GST 5%';
+          } else if (taxType.includes('PST')) {
+            taxDescription = 'PST 7%';
+          }
+
           lines.push({
             product_code: 'TAX',
-            description: 'Sales Tax',
+            description: taxDescription,
             quantity: 1,
             unit_price: taxAmountValue,
             discount: 0,
