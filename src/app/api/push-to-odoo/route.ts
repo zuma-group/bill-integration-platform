@@ -179,9 +179,19 @@ export async function POST(request: NextRequest) {
         const lines = [...baseLines];
 
         if (Math.abs(taxAmountValue) > 0) {
+          // Determine tax description based on tax type
+          let taxDescription = 'Sales Tax';
+          const taxType = invoice.taxType?.toUpperCase() || '';
+          
+          if (taxType.includes('GST')) {
+            taxDescription = 'GST 5%';
+          } else if (taxType.includes('PST')) {
+            taxDescription = 'PST 7%';
+          }
+
           lines.push({
             product_code: 'TAX',
-            description: 'Sales Tax',
+            description: taxDescription,
             quantity: 1,
             unit_price: taxAmountValue,
             discount: 0,
@@ -220,8 +230,10 @@ export async function POST(request: NextRequest) {
             amount: item.amount,
             tax: item.tax
           })),
+          lines,  // Includes line items + tax line for Odoo processing
           subtotal: subtotalValue,
           taxAmount: taxAmountValue,
+          taxType: invoice.taxType,  // Show the tax type (GST, PST, etc.)
           total: totalAmountValue,
           currency: 'USD',  // Force to USD to ensure valid currency_id mapping in Odoo
           paymentTerms: invoice.paymentTerms || 'NET 30 DAYS',
