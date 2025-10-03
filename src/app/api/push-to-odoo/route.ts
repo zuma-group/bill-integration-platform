@@ -230,8 +230,10 @@ export async function POST(request: NextRequest) {
             amount: item.amount,
             tax: item.tax
           })),
+          lines,  // Includes line items + tax line for Odoo processing
           subtotal: subtotalValue,
           taxAmount: taxAmountValue,
+          taxType: invoice.taxType,  // Show the tax type (GST, PST, etc.)
           total: totalAmountValue,
           currency: 'USD',  // Force to USD to ensure valid currency_id mapping in Odoo
           paymentTerms: invoice.paymentTerms || 'NET 30 DAYS',
