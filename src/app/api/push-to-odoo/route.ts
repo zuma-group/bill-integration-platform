@@ -6,6 +6,32 @@ import { normalizeToOdooDateFormat } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic'; // Prevent caching
 
+/**
+ * Formats tax description based on tax type extracted from invoice
+ * @param taxType - The tax type extracted from the invoice (e.g., "GST", "PST", "GST 5%")
+ * @returns Formatted tax description according to business rules
+ */
+function formatTaxDescription(taxType: string | null | undefined): string {
+  if (!taxType) {
+    return 'Sales Tax';
+  }
+
+  const normalizedTaxType = taxType.trim().toUpperCase();
+
+  // If GST 5% or GST, return "GST 5%"
+  if (normalizedTaxType.includes('GST')) {
+    return 'GST 5%';
+  }
+
+  // If PST, return "PST 7%"
+  if (normalizedTaxType.includes('PST')) {
+    return 'PST 7%';
+  }
+
+  // For any other tax type, return as-is or default to "Sales Tax"
+  return taxType || 'Sales Tax';
+}
+
 export async function POST(request: NextRequest) {
   console.log('='.repeat(50));
   console.log('PUSH TO ODOO ENDPOINT CALLED');
@@ -179,9 +205,10 @@ export async function POST(request: NextRequest) {
         const lines = [...baseLines];
 
         if (Math.abs(taxAmountValue) > 0) {
+          const taxDescription = formatTaxDescription(invoice.taxType);
           lines.push({
             product_code: 'TAX',
-            description: 'Sales Tax',
+            description: taxDescription,
             quantity: 1,
             unit_price: taxAmountValue,
             discount: 0,
