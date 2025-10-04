@@ -179,11 +179,26 @@ export async function POST(request: NextRequest) {
         const lines = [...baseLines];
 
         if (Math.abs(taxAmountValue) > 0) {
-          // Determine tax description based on tax type
+          // Determine tax description based on tax type and percentage
           let taxDescription = 'Sales Tax';
           const taxType = invoice.taxType?.toUpperCase() || '';
           
-          if (taxType.includes('GST')) {
+          // If both GST and PST are mentioned, determine which one is actually applied
+          // by calculating the tax percentage
+          if (taxType.includes('GST') && taxType.includes('PST')) {
+            const taxPercentage = subtotalValue > 0 ? (taxAmountValue / subtotalValue) * 100 : 0;
+            
+            // Determine which tax is applied based on percentage
+            // GST is 5%, PST is 7%
+            if (Math.abs(taxPercentage - 5) < Math.abs(taxPercentage - 7)) {
+              taxDescription = 'GST 5%';
+            } else if (Math.abs(taxPercentage - 7) < Math.abs(taxPercentage - 5)) {
+              taxDescription = 'PST 7%';
+            } else if (Math.abs(taxPercentage - 12) < 0.5) {
+              // If it's close to 12%, it's both GST + PST (rare case)
+              taxDescription = 'GST 5% + PST 7%';
+            }
+          } else if (taxType.includes('GST')) {
             taxDescription = 'GST 5%';
           } else if (taxType.includes('PST')) {
             taxDescription = 'PST 7%';
