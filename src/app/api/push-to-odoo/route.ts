@@ -166,7 +166,7 @@ export async function POST(request: NextRequest) {
             quantity: safeQuantity,
             unit_price: unitPrice,
             discount,
-            taxes: [],
+            taxes: [] as unknown[],
             subtotal,
           };
         });
@@ -182,12 +182,12 @@ export async function POST(request: NextRequest) {
           // Determine tax description based on tax type and percentage
           let taxDescription = 'Sales Tax';
           const taxType = invoice.taxType?.toUpperCase() || '';
-          
+
           // If both GST and PST are mentioned, determine which one is actually applied
           // by calculating the tax percentage
           if (taxType.includes('GST') && taxType.includes('PST')) {
             const taxPercentage = subtotalValue > 0 ? (taxAmountValue / subtotalValue) * 100 : 0;
-            
+
             // Determine which tax is applied based on percentage
             // GST is 5%, PST is 7%
             if (Math.abs(taxPercentage - 5) < Math.abs(taxPercentage - 7)) {
@@ -204,13 +204,34 @@ export async function POST(request: NextRequest) {
             taxDescription = 'PST 7%';
           }
 
+          // Build taxes dictionary to populate into the existing taxes field
+          const taxesArray: unknown[] = [];
+          if (taxType.includes('GST') && taxType.includes('PST')) {
+            const gstEstimate = Number((subtotalValue * 0.05).toFixed(2));
+            let pstEstimate = Number((subtotalValue * 0.07).toFixed(2));
+            const sum = Number((gstEstimate + pstEstimate).toFixed(2));
+            // Adjust PST to match the provided total tax if there is minor variance
+            if (sum !== taxAmountValue) {
+              pstEstimate = Number((taxAmountValue - gstEstimate).toFixed(2));
+              if (pstEstimate < 0) pstEstimate = 0;
+            }
+            if (gstEstimate > 0) taxesArray.push({ tax_type: 'GST', amount: gstEstimate });
+            if (pstEstimate > 0) taxesArray.push({ tax_type: 'PST', amount: pstEstimate });
+          } else if (taxType.includes('GST')) {
+            taxesArray.push({ tax_type: 'GST', amount: taxAmountValue });
+          } else if (taxType.includes('PST')) {
+            taxesArray.push({ tax_type: 'PST', amount: taxAmountValue });
+          } else {
+            taxesArray.push({ tax_type: 'Tax', amount: taxAmountValue });
+          }
+
           lines.push({
             product_code: 'TAX',
             description: taxDescription,
             quantity: 1,
             unit_price: taxAmountValue,
             discount: 0,
-            taxes: [],
+            taxes: taxesArray,
             subtotal: taxAmountValue
           });
         }
