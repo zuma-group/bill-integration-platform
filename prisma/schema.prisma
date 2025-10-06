@@ -26,7 +26,8 @@ model Invoice {
   vendor        Json        // Stores vendor object
   customer      Json        // Stores customer object
   subtotal      Float
-  taxAmount     Float
+  taxes         Json        // Array of {tax_type: string, amount: number}
+  taxAmount     Float       // Deprecated: kept for backward compatibility
   total         Float
   currency      String      @default("USD")
   paymentTerms  String

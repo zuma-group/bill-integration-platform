@@ -36,7 +36,11 @@
                         amount: 100
                     }],
                     subtotal: 100,
-                    taxAmount: 10,
+                    taxes: [
+                        { tax_type: 'GST', amount: 5 },
+                        { tax_type: 'PST', amount: 5 }
+                    ],
+                    taxAmount: 10, // Deprecated but kept for backward compatibility
                     totalAmount: 110
                 }];
 

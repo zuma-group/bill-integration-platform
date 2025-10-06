@@ -322,15 +322,33 @@ export function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
                 {formatCurrency(invoice.subtotal)}
               </span>
             </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-secondary-text flex items-center gap-1">
-                <Percent className="w-3 h-3" />
-                Tax ({taxRate.toFixed(1)}%)
-              </span>
-              <span className="text-primary-text font-medium">
-                {formatCurrency(invoice.taxAmount)}
-              </span>
-            </div>
+            {/* Display multiple taxes if available */}
+            {invoice.taxes && invoice.taxes.length > 0 ? (
+              invoice.taxes.map((tax, index) => (
+                <div key={index} className="flex justify-between text-sm">
+                  <span className="text-secondary-text flex items-center gap-1">
+                    <Percent className="w-3 h-3" />
+                    {tax.tax_type}
+                  </span>
+                  <span className="text-primary-text font-medium">
+                    {formatCurrency(tax.amount)}
+                  </span>
+                </div>
+              ))
+            ) : (
+              /* Fallback to old format for backward compatibility */
+              invoice.taxAmount > 0 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-secondary-text flex items-center gap-1">
+                    <Percent className="w-3 h-3" />
+                    {invoice.taxType || 'Tax'} ({taxRate.toFixed(1)}%)
+                  </span>
+                  <span className="text-primary-text font-medium">
+                    {formatCurrency(invoice.taxAmount)}
+                  </span>
+                </div>
+              )
+            )}
             <div className="flex justify-between text-lg pt-2 border-t">
               <span className="font-semibold text-primary-text">Total</span>
               <span className="font-bold text-accent-highlight">

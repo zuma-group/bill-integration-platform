@@ -11,6 +11,11 @@ export interface Customer {
   address: string;
 }
 
+export interface Tax {
+  tax_type: string;
+  amount: number;
+}
+
 export interface LineItem {
   description: string;
   partNumber?: string;
@@ -30,8 +35,9 @@ export interface Invoice {
   customer: Customer;
   lineItems: LineItem[];
   subtotal: number;
-  taxAmount: number;
-  taxType?: string; // Tax type: GST, PST, etc.
+  taxes: Tax[]; // Array of taxes with type and amount
+  taxAmount: number; // Deprecated: kept for backward compatibility
+  taxType?: string; // Deprecated: kept for backward compatibility
   total: number;
   currency: string;
   paymentTerms: string;
@@ -110,7 +116,8 @@ export interface OdooPayload {
 
     // Totals
     subtotal: number;
-    tax_amount: number;
+    taxes: Tax[]; // Array of taxes
+    tax_amount: number; // Deprecated: kept for backward compatibility
     total: number;
   }>;
 }
