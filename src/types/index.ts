@@ -166,7 +166,10 @@ export interface OdooBillPayload {
       quantity: number;
       unit_price: number;
       discount: number;
-      taxes: unknown[];
+      taxes: Array<{
+        tax_type: string;
+        amount: number;
+      }>;
       subtotal: number;
     }>;
 

@@ -131,6 +131,39 @@ export async function POST(request: NextRequest) {
           url: fileUrl
         });
 
+        // Handle multiple taxes from the new taxes array
+        const invoiceTaxes = invoice.taxes || [];
+        let totalTaxAmount = 0;
+        
+        // Calculate total tax amount
+        invoiceTaxes.forEach((tax) => {
+          const taxAmount = Number((tax.amount ?? 0).toFixed(2));
+          totalTaxAmount += taxAmount;
+        });
+        
+        // Fallback to old format for backward compatibility
+        if (invoiceTaxes.length === 0) {
+          totalTaxAmount = Number((invoice.taxAmount ?? 0).toFixed(2));
+        }
+
+        // Create tax objects for line items (maintain exact Odoo structure)
+        const taxObjects = invoiceTaxes.length > 0 
+          ? invoiceTaxes.map(tax => ({
+              tax_type: tax.tax_type,
+              amount: Number((tax.amount ?? 0).toFixed(2))
+            }))
+          : (invoice.taxAmount && invoice.taxAmount > 0 ? [{
+              tax_type: invoice.taxType || 'Sales Tax',
+              amount: Number(invoice.taxAmount.toFixed(2))
+            }] : []);
+
+        console.log('🧾 TAX STRUCTURE DEBUG:');
+        console.log('- Invoice taxes array:', invoiceTaxes);
+        console.log('- Legacy tax amount:', invoice.taxAmount);
+        console.log('- Legacy tax type:', invoice.taxType);
+        console.log('- Final tax objects:', taxObjects);
+        console.log('- Total tax amount:', totalTaxAmount);
+
         const baseLines = invoice.lineItems.map(item => {
           const safeQuantity = Number.isFinite(item.quantity) && item.quantity > 0 ? Number(item.quantity) : 1;
           const rawAmount = Number.isFinite(item.amount) ? Number(item.amount) : 0;
@@ -158,7 +191,7 @@ export async function POST(request: NextRequest) {
             quantity: safeQuantity,
             unit_price: unitPrice,
             discount,
-            taxes: [],
+            taxes: taxObjects, // Maintain exact Odoo structure - only values change
             subtotal,
           };
         });
@@ -168,63 +201,6 @@ export async function POST(request: NextRequest) {
         );
 
         const lines = [...baseLines];
-        
-        // Handle multiple taxes from the new taxes array
-        const invoiceTaxes = invoice.taxes || [];
-        let totalTaxAmount = 0;
-        
-        // Add each tax as a separate line item
-        invoiceTaxes.forEach((tax) => {
-          const taxAmount = Number((tax.amount ?? 0).toFixed(2));
-          if (Math.abs(taxAmount) > 0) {
-            totalTaxAmount += taxAmount;
-            lines.push({
-              product_code: 'TAX',
-              description: tax.tax_type,
-              quantity: 1,
-              unit_price: taxAmount,
-              discount: 0,
-              taxes: [],
-              subtotal: taxAmount
-            });
-          }
-        });
-        
-        // Fallback to old format for backward compatibility
-        if (invoiceTaxes.length === 0) {
-          const taxAmountValue = Number((invoice.taxAmount ?? 0).toFixed(2));
-          if (Math.abs(taxAmountValue) > 0) {
-            totalTaxAmount = taxAmountValue;
-            let taxDescription = 'Sales Tax';
-            const taxType = invoice.taxType?.toUpperCase() || '';
-            
-            if (taxType.includes('GST') && taxType.includes('PST')) {
-              const taxPercentage = subtotalValue > 0 ? (taxAmountValue / subtotalValue) * 100 : 0;
-              if (Math.abs(taxPercentage - 5) < Math.abs(taxPercentage - 7)) {
-                taxDescription = 'GST 5%';
-              } else if (Math.abs(taxPercentage - 7) < Math.abs(taxPercentage - 5)) {
-                taxDescription = 'PST 7%';
-              } else if (Math.abs(taxPercentage - 12) < 0.5) {
-                taxDescription = 'GST 5% + PST 7%';
-              }
-            } else if (taxType.includes('GST')) {
-              taxDescription = 'GST 5%';
-            } else if (taxType.includes('PST')) {
-              taxDescription = 'PST 7%';
-            }
-
-            lines.push({
-              product_code: 'TAX',
-              description: taxDescription,
-              quantity: 1,
-              unit_price: taxAmountValue,
-              discount: 0,
-              taxes: [],
-              subtotal: taxAmountValue
-            });
-          }
-        }
-        
         const taxAmountValue = totalTaxAmount;
 
         const totalAmountValue = Number((subtotalValue + taxAmountValue).toFixed(2));
@@ -300,8 +276,19 @@ export async function POST(request: NextRequest) {
         const payloadStr = JSON.stringify(odooPayload);
         console.log('Payload size:', (payloadStr.length / 1024).toFixed(2), 'KB');
 
-        // Log a sample of the payload
-        console.log('\nPayload structure (invoice data only, PDFs sent separately):');
+        // Log a sample of the payload with tax structure
+        console.log('\n📋 FINAL PAYLOAD STRUCTURE:');
+        console.log('Invoice count:', odooPayload.invoices.length);
+        console.log('\n📊 TAX STRUCTURE IN PAYLOAD:');
+        odooPayload.invoices.forEach((inv, idx) => {
+          console.log(`Invoice ${idx + 1} (${inv.invoiceNumber}):`);
+          console.log('- Lines count:', inv.lines.length);
+          console.log('- Tax objects in lines:', inv.lines.map(line => ({
+            product_code: line.product_code,
+            taxes: line.taxes
+          })));
+        });
+        console.log('\nFull payload structure:');
         console.log(JSON.stringify(odooPayload, null, 2));
 
         // Odoo expects JSON with 'invoices' array - send full payload
