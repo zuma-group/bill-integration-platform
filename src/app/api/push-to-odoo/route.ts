@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
-import { OdooBillPayload, Invoice } from '@/types';
+import { Invoice } from '@/types';
 import { storePdf } from '@/lib/pdf-storage';
 import { normalizeToOdooDateFormat } from '@/lib/utils';
 
@@ -131,14 +131,6 @@ export async function POST(request: NextRequest) {
           url: fileUrl
         });
 
-        const vendorSummary = [
-          invoice.vendor?.name,
-          invoice.vendor?.address,
-          invoice.vendor?.taxId ? `Tax ID: ${invoice.vendor.taxId}` : null,
-          invoice.vendor?.email,
-          invoice.vendor?.phone
-        ].filter(Boolean).join('\n');
-
         const baseLines = invoice.lineItems.map(item => {
           const safeQuantity = Number.isFinite(item.quantity) && item.quantity > 0 ? Number(item.quantity) : 1;
           const rawAmount = Number.isFinite(item.amount) ? Number(item.amount) : 0;
@@ -175,45 +167,65 @@ export async function POST(request: NextRequest) {
           baseLines.reduce((sum, line) => sum + line.subtotal, 0).toFixed(2)
         );
 
-        const taxAmountValue = Number((invoice.taxAmount ?? 0).toFixed(2));
         const lines = [...baseLines];
-
-        if (Math.abs(taxAmountValue) > 0) {
-          // Determine tax description based on tax type and percentage
-          let taxDescription = 'Sales Tax';
-          const taxType = invoice.taxType?.toUpperCase() || '';
-          
-          // If both GST and PST are mentioned, determine which one is actually applied
-          // by calculating the tax percentage
-          if (taxType.includes('GST') && taxType.includes('PST')) {
-            const taxPercentage = subtotalValue > 0 ? (taxAmountValue / subtotalValue) * 100 : 0;
-            
-            // Determine which tax is applied based on percentage
-            // GST is 5%, PST is 7%
-            if (Math.abs(taxPercentage - 5) < Math.abs(taxPercentage - 7)) {
-              taxDescription = 'GST 5%';
-            } else if (Math.abs(taxPercentage - 7) < Math.abs(taxPercentage - 5)) {
-              taxDescription = 'PST 7%';
-            } else if (Math.abs(taxPercentage - 12) < 0.5) {
-              // If it's close to 12%, it's both GST + PST (rare case)
-              taxDescription = 'GST 5% + PST 7%';
-            }
-          } else if (taxType.includes('GST')) {
-            taxDescription = 'GST 5%';
-          } else if (taxType.includes('PST')) {
-            taxDescription = 'PST 7%';
+        
+        // Handle multiple taxes from the new taxes array
+        const invoiceTaxes = invoice.taxes || [];
+        let totalTaxAmount = 0;
+        
+        // Add each tax as a separate line item
+        invoiceTaxes.forEach((tax) => {
+          const taxAmount = Number((tax.amount ?? 0).toFixed(2));
+          if (Math.abs(taxAmount) > 0) {
+            totalTaxAmount += taxAmount;
+            lines.push({
+              product_code: 'TAX',
+              description: tax.tax_type,
+              quantity: 1,
+              unit_price: taxAmount,
+              discount: 0,
+              taxes: [],
+              subtotal: taxAmount
+            });
           }
+        });
+        
+        // Fallback to old format for backward compatibility
+        if (invoiceTaxes.length === 0) {
+          const taxAmountValue = Number((invoice.taxAmount ?? 0).toFixed(2));
+          if (Math.abs(taxAmountValue) > 0) {
+            totalTaxAmount = taxAmountValue;
+            let taxDescription = 'Sales Tax';
+            const taxType = invoice.taxType?.toUpperCase() || '';
+            
+            if (taxType.includes('GST') && taxType.includes('PST')) {
+              const taxPercentage = subtotalValue > 0 ? (taxAmountValue / subtotalValue) * 100 : 0;
+              if (Math.abs(taxPercentage - 5) < Math.abs(taxPercentage - 7)) {
+                taxDescription = 'GST 5%';
+              } else if (Math.abs(taxPercentage - 7) < Math.abs(taxPercentage - 5)) {
+                taxDescription = 'PST 7%';
+              } else if (Math.abs(taxPercentage - 12) < 0.5) {
+                taxDescription = 'GST 5% + PST 7%';
+              }
+            } else if (taxType.includes('GST')) {
+              taxDescription = 'GST 5%';
+            } else if (taxType.includes('PST')) {
+              taxDescription = 'PST 7%';
+            }
 
-          lines.push({
-            product_code: 'TAX',
-            description: taxDescription,
-            quantity: 1,
-            unit_price: taxAmountValue,
-            discount: 0,
-            taxes: [],
-            subtotal: taxAmountValue
-          });
+            lines.push({
+              product_code: 'TAX',
+              description: taxDescription,
+              quantity: 1,
+              unit_price: taxAmountValue,
+              discount: 0,
+              taxes: [],
+              subtotal: taxAmountValue
+            });
+          }
         }
+        
+        const taxAmountValue = totalTaxAmount;
 
         const totalAmountValue = Number((subtotalValue + taxAmountValue).toFixed(2));
 
@@ -245,10 +257,11 @@ export async function POST(request: NextRequest) {
             amount: item.amount,
             tax: item.tax
           })),
-          lines,  // Includes line items + tax line for Odoo processing
+          lines,  // Includes line items + tax lines for Odoo processing
           subtotal: subtotalValue,
-          taxAmount: taxAmountValue,
-          taxType: invoice.taxType,  // Show the tax type (GST, PST, etc.)
+          taxes: invoiceTaxes.length > 0 ? invoiceTaxes : (invoice.taxAmount ? [{ tax_type: invoice.taxType || 'Tax', amount: invoice.taxAmount }] : []),
+          taxAmount: taxAmountValue, // Deprecated: kept for backward compatibility
+          taxType: invoice.taxType,  // Deprecated: kept for backward compatibility
           total: totalAmountValue,
           currency: 'USD',  // Force to USD to ensure valid currency_id mapping in Odoo
           paymentTerms: invoice.paymentTerms || 'NET 30 DAYS',
