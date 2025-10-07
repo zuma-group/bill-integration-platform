@@ -258,14 +258,6 @@ export async function POST(request: NextRequest) {
             name: invoice.customer.name,
             address: invoice.customer.address
           },
-          lineItems: invoice.lineItems.map(item => ({
-            description: item.description,
-            partNumber: item.partNumber,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            amount: item.amount,
-            tax: item.tax
-          })),
           lines,  // Includes line items + tax line for Odoo processing
           subtotal: subtotalValue,
           taxAmount: taxAmountValue,
