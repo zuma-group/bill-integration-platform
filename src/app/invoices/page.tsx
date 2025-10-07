@@ -9,18 +9,19 @@ import { Link, FileText, Trash2 } from 'lucide-react';
 import { Invoice } from '@/types';
 
 export default function InvoicesPage() {
-  const { invoices, loadData, syncToOdoo, setInvoices } = useInvoiceStore();
+  const { invoices, loadData, syncToOdoo, setInvoices, addInvoice } = useInvoiceStore();
   const [syncingInvoiceId, setSyncingInvoiceId] = useState<string | null>(null);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   const extractedInvoices = invoices.filter(inv => inv.status === 'extracted');
-  const getInvoiceKey = (invoice: Invoice) => invoice.id ?? invoice.invoiceNumber;
+  const getInvoiceKey = (invoice: Invoice) => invoice.id ?? `${invoice.invoiceNumber}-${Math.random().toString(36).slice(2)}`;
 
   const pushInvoiceToOdoo = async (invoice: Invoice) => {
     if (!invoice.pdfBase64) {
@@ -118,6 +119,33 @@ export default function InvoicesPage() {
     }
   };
 
+  const handleImportFromGmail = async () => {
+    setIsImporting(true);
+    setFeedback(null);
+    setError(null);
+    try {
+      const res = await fetch('/api/gmail/poll?max=10');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to poll Gmail');
+
+      let importedCount = 0;
+      for (const r of data.results || []) {
+        for (const att of r.attachments || []) {
+          for (const inv of (att.invoices || []) as Invoice[]) {
+            addInvoice(inv);
+            importedCount++;
+          }
+        }
+      }
+      setFeedback(importedCount > 0 ? `Imported ${importedCount} invoice(s) from Gmail.` : 'No invoices found in Gmail.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to import from Gmail');
+    }
+    finally {
+      setIsImporting(false);
+    }
+  };
+
   if (invoices.length === 0) {
     return (
       <Card>
@@ -130,6 +158,11 @@ export default function InvoicesPage() {
             <p className="text-secondary-text">
               Upload and process invoices to see them here
             </p>
+            <div className="mt-6">
+              <Button variant="primary" onClick={handleImportFromGmail} loading={isImporting}>
+                {isImporting ? 'Importing…' : 'Import from Gmail'}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -143,6 +176,14 @@ export default function InvoicesPage() {
           <div className="flex justify-between items-center">
             <CardTitle>Processed Invoices ({invoices.length} total)</CardTitle>
             <div className="flex gap-2">
+              <Button
+                variant="primary"
+                icon={Link}
+                onClick={handleImportFromGmail}
+                loading={isImporting}
+              >
+                {isImporting ? 'Importing…' : 'Import from Gmail'}
+              </Button>
               {extractedInvoices.length > 0 && (
                 <Button
                   variant="primary"
