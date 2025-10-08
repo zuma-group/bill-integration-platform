@@ -11,7 +11,7 @@ A modern web application for extracting invoice data using OCR (Google Gemini 2.
 - **Visual Pipeline**: Track processing progress through intuitive steps
 - **Modern UI**: Clean, responsive design with semantic color system
 - **Type Safety**: Full TypeScript implementation
-- **Local Storage**: Data persistence (PostgreSQL ready for production)
+- **In-memory Storage**: Data persistence without a database (can be extended later)
 
 ## Tech Stack
 
@@ -23,7 +23,7 @@ A modern web application for extracting invoice data using OCR (Google Gemini 2.
 - **React Hook Form** - Form handling
 - **React Dropzone** - File upload
 - **Framer Motion** - Animations
-- **Prisma** - Database ORM (prepared for PostgreSQL)
+- **In-memory storage & Fetch API** - No database dependency
 
 ## Getting Started
 
@@ -46,7 +46,7 @@ npm install
 ```
 
 3. Set up environment variables:
-The `.env.local` file is already configured with the Gemini API key.
+Provide Gemini OCR credentials and optional Odoo webhook settings in `.env.local`.
 
 4. Run the development server:
 ```bash
@@ -61,7 +61,9 @@ npm run dev
 src/
 ├── app/                    # Next.js App Router pages
 │   ├── api/               # API routes
-│   │   └── ocr/          # OCR processing endpoint
+│   │   ├── attachments/  # PDF retrieval for Odoo
+│   │   ├── ocr/          # OCR processing endpoint
+│   │   └── push-to-odoo/ # Odoo integration endpoint
 │   ├── invoices/         # Processed invoices page
 │   ├── odoo/            # Odoo records page
 │   └── page.tsx         # Home/Upload page
@@ -139,18 +141,9 @@ Currently simulated in localStorage. For production:
 2. Implement real API calls in `/lib/odoo.ts`
 3. Update sync functions in the store
 
-## Database (TODO)
+## Storage Strategy
 
-The application is prepared for PostgreSQL integration:
-
-1. Set up PostgreSQL database
-2. Update `DATABASE_URL` in `.env.local`
-3. Run Prisma migrations:
-```bash
-npx prisma generate
-npx prisma db push
-```
-4. Replace localStorage calls with Prisma client
+All invoice data lives in memory during processing. PDFs are cached per request for Odoo to download via the attachments endpoint. There is no persistent database in the current build, but the architecture can be extended with PostgreSQL if needed.
 
 ## Development
 
@@ -187,8 +180,8 @@ npm run type-check # TypeScript type checking
 
 ## Future Enhancements
 
-- [ ] Real PostgreSQL integration
-- [ ] Real Odoo API integration
+- [ ] Persistent storage (PostgreSQL or other)
+- [ ] Production Odoo API integration
 - [ ] User authentication
 - [ ] Export to CSV/Excel
 - [ ] Advanced search and filtering
