@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const history = await gmail.users.history.list({
       userId,
       startHistoryId,
-      historyTypes: ['messageAdded', 'labelsAdded'],
+      historyTypes: ['messageAdded', 'labelAdded'],
     });
     const items = history.data.history || [];
     console.log('[Gmail][Notification] History items', { count: items.length, startHistoryId });
