@@ -4,6 +4,7 @@ import { extractInvoiceData } from '@/lib/gemini';
 import { storePdf } from '@/lib/pdf-storage';
 import { randomUUID } from 'crypto';
 import { Invoice } from '@/types';
+import { enqueueInvoices } from '@/lib/server-queue';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
               attachmentFilename: filename,
               mimeType: att.mimeType,
             }));
-            // Here you could push to a DB or webhook; for now we just count.
+            enqueueInvoices(invoices);
             count += invoices.length;
           } catch {}
         }

@@ -15,10 +15,36 @@ export default function InvoicesPage() {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [autoImporting, setAutoImporting] = useState(false);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Background auto-import from server queue
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    let cancelled = false;
+
+    const tick = async () => {
+      try {
+        setAutoImporting(true);
+        const res = await fetch('/api/invoices/pending?max=25', { cache: 'no-store' });
+        const data = await res.json();
+        if (res.ok && Array.isArray(data.invoices) && data.invoices.length > 0) {
+          data.invoices.forEach((inv: Invoice) => addInvoice(inv));
+          setFeedback(`Auto-imported ${data.invoices.length} invoice(s).`);
+        }
+      } catch {}
+      finally {
+        setAutoImporting(false);
+        if (!cancelled) timer = setTimeout(tick, 4000);
+      }
+    };
+
+    tick();
+    return () => { cancelled = true; if (timer) clearTimeout(timer); };
+  }, [addInvoice]);
 
   const extractedInvoices = invoices.filter(inv => inv.status === 'extracted');
   const getInvoiceKey = (invoice: Invoice) => invoice.id ?? `${invoice.invoiceNumber}-${Math.random().toString(36).slice(2)}`;
@@ -150,7 +176,7 @@ export default function InvoicesPage() {
     return (
       <Card>
         <CardContent className="py-16">
-          <div className="text-center">
+            <div className="text-center">
             <FileText className="w-16 h-16 mx-auto text-secondary-text mb-4" />
             <h3 className="text-lg font-semibold text-primary-text mb-2">
               No invoices processed yet
@@ -158,10 +184,13 @@ export default function InvoicesPage() {
             <p className="text-secondary-text">
               Upload and process invoices to see them here
             </p>
-            <div className="mt-6">
+            <div className="mt-6 flex items-center justify-center gap-3">
               <Button variant="primary" onClick={handleImportFromGmail} loading={isImporting}>
                 {isImporting ? 'Importing…' : 'Import from Gmail'}
               </Button>
+              {autoImporting && (
+                <span className="text-sm text-secondary-text">Listening for new invoices…</span>
+              )}
             </div>
           </div>
         </CardContent>
