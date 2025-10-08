@@ -38,15 +38,21 @@ export async function POST(request: NextRequest) {
     const processedLabel = await ensureLabel(gmail, userId, getProcessedLabelName());
 
     // Fetch history to find new messages
-    const startHistoryId = decoded.historyId || getLastHistoryId();
+    // Use previously stored historyId if available; fallback to the one from this notification
+    const storedHistoryId = getLastHistoryId();
+    const startHistoryId = storedHistoryId || decoded.historyId;
     if (!startHistoryId) {
       console.warn('[Gmail][Notification] Missing historyId; ignoring notification to avoid 400');
       return NextResponse.json({ success: true, processed: [] });
     }
 
-    const history = await gmail.users.history.list({ userId, startHistoryId, historyTypes: ['messageAdded'] });
+    const history = await gmail.users.history.list({
+      userId,
+      startHistoryId,
+      historyTypes: ['messageAdded', 'labelsAdded'],
+    });
     const items = history.data.history || [];
-    console.log('[Gmail][Notification] History items', { count: items.length });
+    console.log('[Gmail][Notification] History items', { count: items.length, startHistoryId });
 
     const processed: Array<{ messageId: string; attachments: number }> = [];
 
@@ -94,8 +100,8 @@ export async function POST(request: NextRequest) {
 
     // Update lastHistoryId: pick max of existing and any returned historyId
     try {
-      const latest = history.data.historyId || (items.length > 0 ? items[items.length - 1]?.id : undefined);
-      if (latest) setLastHistoryId(String(latest));
+      if (decoded.historyId) setLastHistoryId(String(decoded.historyId));
+      else if (items.length > 0 && items[items.length - 1]?.id) setLastHistoryId(String(items[items.length - 1]?.id));
     } catch {}
 
     console.log('[Gmail][Notification] Done', { processed: processed.length });
