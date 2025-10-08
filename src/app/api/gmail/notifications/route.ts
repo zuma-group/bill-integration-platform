@@ -5,6 +5,7 @@ import { storePdf } from '@/lib/pdf-storage';
 import { randomUUID } from 'crypto';
 import { Invoice } from '@/types';
 import { enqueueInvoices } from '@/lib/server-queue';
+import { getLastHistoryId, setLastHistoryId } from '@/lib/gmail-state';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
     const { message } = body;
     if (!message?.data) return NextResponse.json({ error: 'Missing Pub/Sub message data' }, { status: 400 });
 
-    const decoded = JSON.parse(Buffer.from(message.data, 'base64').toString('utf8')) as { emailAddress: string; historyId: string };
+    const decoded = JSON.parse(Buffer.from(message.data, 'base64').toString('utf8')) as { emailAddress?: string; historyId?: string };
     console.log('[Gmail][Notification] Received Pub/Sub push', {
       at: new Date().toISOString(),
       emailAddress: decoded.emailAddress,
@@ -37,7 +38,13 @@ export async function POST(request: NextRequest) {
     const processedLabel = await ensureLabel(gmail, userId, getProcessedLabelName());
 
     // Fetch history to find new messages
-    const history = await gmail.users.history.list({ userId, startHistoryId: decoded.historyId, historyTypes: ['messageAdded'] });
+    const startHistoryId = decoded.historyId || getLastHistoryId();
+    if (!startHistoryId) {
+      console.warn('[Gmail][Notification] Missing historyId; ignoring notification to avoid 400');
+      return NextResponse.json({ success: true, processed: [] });
+    }
+
+    const history = await gmail.users.history.list({ userId, startHistoryId, historyTypes: ['messageAdded'] });
     const items = history.data.history || [];
     console.log('[Gmail][Notification] History items', { count: items.length });
 
@@ -84,6 +91,12 @@ export async function POST(request: NextRequest) {
         processed.push({ messageId: mid, attachments: count });
       }
     }
+
+    // Update lastHistoryId: pick max of existing and any returned historyId
+    try {
+      const latest = history.data.historyId || (items.length > 0 ? items[items.length - 1]?.id : undefined);
+      if (latest) setLastHistoryId(String(latest));
+    } catch {}
 
     console.log('[Gmail][Notification] Done', { processed: processed.length });
     return NextResponse.json({ success: true, processed });

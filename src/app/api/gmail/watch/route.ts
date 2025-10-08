@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGmailClient } from '@/lib/gmail';
+import { setLastHistoryId } from '@/lib/gmail-state';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,8 @@ export async function POST(request: NextRequest) {
         labelFilterAction: labelIds && labelIds.length > 0 ? 'include' : undefined,
       },
     });
+
+    if (res.data.historyId) setLastHistoryId(String(res.data.historyId));
 
     return NextResponse.json({
       success: true,
