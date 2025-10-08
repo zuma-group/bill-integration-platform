@@ -18,14 +18,27 @@ export async function POST(request: NextRequest) {
     const userId = 'me';
     const processedLabel = await ensureLabel(gmail, userId, getProcessedLabelName());
 
-    const { message } = await request.json();
+    const body = await request.json();
+    // Handle Pub/Sub push endpoint URL verification challenge
+    if (body && body.message === undefined && body.subscription && body.token) {
+      console.log('[Gmail][Notification] Verification challenge received');
+      return NextResponse.json({ token: body.token });
+    }
+
+    const { message } = body;
     if (!message?.data) return NextResponse.json({ error: 'Missing Pub/Sub message data' }, { status: 400 });
 
     const decoded = JSON.parse(Buffer.from(message.data, 'base64').toString('utf8')) as { emailAddress: string; historyId: string };
+    console.log('[Gmail][Notification] Received Pub/Sub push', {
+      at: new Date().toISOString(),
+      emailAddress: decoded.emailAddress,
+      historyId: decoded.historyId,
+    });
 
     // Fetch history to find new messages
     const history = await gmail.users.history.list({ userId, startHistoryId: decoded.historyId, historyTypes: ['messageAdded'] });
     const items = history.data.history || [];
+    console.log('[Gmail][Notification] History items', { count: items.length });
 
     const processed: Array<{ messageId: string; attachments: number }> = [];
 
@@ -66,12 +79,15 @@ export async function POST(request: NextRequest) {
         }
 
         await gmail.users.messages.modify({ userId, id: mid, requestBody: { addLabelIds: [processedLabel] } });
+        console.log('[Gmail][Notification] Processed message', { messageId: mid, invoices: count });
         processed.push({ messageId: mid, attachments: count });
       }
     }
 
+    console.log('[Gmail][Notification] Done', { processed: processed.length });
     return NextResponse.json({ success: true, processed });
   } catch (error) {
+    console.error('[Gmail][Notification] Error', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to handle Pub/Sub notification' }, { status: 500 });
   }
 }
