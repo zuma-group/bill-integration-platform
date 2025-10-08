@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
-import { OdooBillPayload, Invoice } from '@/types';
+import { Invoice } from '@/types';
 import { storePdf } from '@/lib/pdf-storage';
 import { normalizeToOdooDateFormat } from '@/lib/utils';
 
@@ -131,14 +131,6 @@ export async function POST(request: NextRequest) {
           url: fileUrl
         });
 
-        const vendorSummary = [
-          invoice.vendor?.name,
-          invoice.vendor?.address,
-          invoice.vendor?.taxId ? `Tax ID: ${invoice.vendor.taxId}` : null,
-          invoice.vendor?.email,
-          invoice.vendor?.phone
-        ].filter(Boolean).join('\n');
-
         const baseLines = invoice.lineItems.map(item => {
           const safeQuantity = Number.isFinite(item.quantity) && item.quantity > 0 ? Number(item.quantity) : 1;
           const rawAmount = Number.isFinite(item.amount) ? Number(item.amount) : 0;
@@ -176,67 +168,39 @@ export async function POST(request: NextRequest) {
         );
 
         const taxAmountValue = Number((invoice.taxAmount ?? 0).toFixed(2));
-        const lines = [...baseLines];
+        const taxes: Array<{ tax_type: string; amount: number }> = [];
+        const taxType = invoice.taxType?.toUpperCase() || '';
 
         if (Math.abs(taxAmountValue) > 0) {
-          // Determine tax description based on tax type and percentage
-          let taxDescription = 'Sales Tax';
-          const taxType = invoice.taxType?.toUpperCase() || '';
-
-          // If both GST and PST are mentioned, determine which one is actually applied
-          // by calculating the tax percentage
-          if (taxType.includes('GST') && taxType.includes('PST')) {
-            const taxPercentage = subtotalValue > 0 ? (taxAmountValue / subtotalValue) * 100 : 0;
-
-            // Determine which tax is applied based on percentage
-            // GST is 5%, PST is 7%
-            if (Math.abs(taxPercentage - 5) < Math.abs(taxPercentage - 7)) {
-              taxDescription = 'GST 5%';
-            } else if (Math.abs(taxPercentage - 7) < Math.abs(taxPercentage - 5)) {
-              taxDescription = 'PST 7%';
-            } else if (Math.abs(taxPercentage - 12) < 0.5) {
-              // If it's close to 12%, it's both GST + PST (rare case)
-              taxDescription = 'GST 5% + PST 7%';
-            }
-          } else if (taxType.includes('GST')) {
-            taxDescription = 'GST 5%';
-          } else if (taxType.includes('PST')) {
-            taxDescription = 'PST 7%';
-          }
-
-          // Build taxes dictionary to populate into the existing taxes field
-          const taxesArray: unknown[] = [];
           if (taxType.includes('GST') && taxType.includes('PST')) {
             const gstEstimate = Number((subtotalValue * 0.05).toFixed(2));
-            let pstEstimate = Number((subtotalValue * 0.07).toFixed(2));
-            const sum = Number((gstEstimate + pstEstimate).toFixed(2));
-            // Adjust PST to match the provided total tax if there is minor variance
-            if (sum !== taxAmountValue) {
-              pstEstimate = Number((taxAmountValue - gstEstimate).toFixed(2));
-              if (pstEstimate < 0) pstEstimate = 0;
-            }
-            if (gstEstimate > 0) taxesArray.push({ tax_type: 'GST', amount: gstEstimate });
-            if (pstEstimate > 0) taxesArray.push({ tax_type: 'PST', amount: pstEstimate });
-          } else if (taxType.includes('GST')) {
-            taxesArray.push({ tax_type: 'GST', amount: taxAmountValue });
-          } else if (taxType.includes('PST')) {
-            taxesArray.push({ tax_type: 'PST', amount: taxAmountValue });
-          } else {
-            taxesArray.push({ tax_type: 'Tax', amount: taxAmountValue });
-          }
+            let pstEstimate = Number((taxAmountValue - gstEstimate).toFixed(2));
 
-          lines.push({
-            product_code: 'TAX',
-            description: taxDescription,
-            quantity: 1,
-            unit_price: taxAmountValue,
-            discount: 0,
-            taxes: taxesArray,
-            subtotal: taxAmountValue
-          });
+            if (pstEstimate < 0) {
+              pstEstimate = Number((subtotalValue * 0.07).toFixed(2));
+            }
+
+            if (gstEstimate > 0) {
+              taxes.push({ tax_type: 'GST', amount: gstEstimate });
+            }
+            if (pstEstimate > 0) {
+              taxes.push({ tax_type: 'PST', amount: Number(pstEstimate.toFixed(2)) });
+            }
+          } else if (taxType.includes('GST')) {
+            taxes.push({ tax_type: 'GST', amount: taxAmountValue });
+          } else if (taxType.includes('PST')) {
+            taxes.push({ tax_type: 'PST', amount: taxAmountValue });
+          } else if (taxType) {
+            taxes.push({ tax_type: taxType, amount: taxAmountValue });
+          } else {
+            taxes.push({ tax_type: 'Tax', amount: taxAmountValue });
+          }
         }
 
-        const totalAmountValue = Number((subtotalValue + taxAmountValue).toFixed(2));
+        const taxTotalFromArray = taxes.reduce((sum, tax) => sum + tax.amount, 0);
+        const taxTotalValue = taxes.length ? Number(taxTotalFromArray.toFixed(2)) : taxAmountValue;
+        const lines = baseLines;
+        const totalAmountValue = Number((subtotalValue + taxTotalValue).toFixed(2));
 
         // Keep PDF base64 for later conversion to file when sending to Odoo
         // But DON'T include it in the invoice data
@@ -258,9 +222,10 @@ export async function POST(request: NextRequest) {
             name: invoice.customer.name,
             address: invoice.customer.address
           },
-          lines,  // Includes line items + tax line for Odoo processing
+          lines,
+          taxes,
           subtotal: subtotalValue,
-          taxAmount: taxAmountValue,
+          taxAmount: taxTotalValue,
           taxType: invoice.taxType,  // Show the tax type (GST, PST, etc.)
           total: totalAmountValue,
           currency: 'USD',  // Force to USD to ensure valid currency_id mapping in Odoo
