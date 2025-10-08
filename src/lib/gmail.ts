@@ -1,6 +1,6 @@
-import { google } from 'googleapis';
+import { google, gmail_v1 } from 'googleapis';
 
-type GmailClient = any;
+type GmailClient = gmail_v1.Gmail;
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -68,7 +68,7 @@ export async function ensureLabel(
   labelName: string
 ): Promise<string> {
   const list = await gmail.users.labels.list({ userId });
-  const existing = (list.data.labels as Array<{ id?: string; name?: string }> | undefined)?.find((l) => l.name === labelName);
+  const existing = (list.data.labels as gmail_v1.Schema$Label[] | undefined)?.find((l) => l.name === labelName);
   if (existing?.id) return existing.id;
 
   const created = await gmail.users.labels.create({
@@ -102,11 +102,11 @@ export interface GmailAttachment {
 export async function getMessageAttachments(
   gmail: GmailClient,
   userId: string,
-  message: any
+  message: gmail_v1.Schema$Message
 ): Promise<GmailAttachment[]> {
   const out: GmailAttachment[] = [];
 
-  async function walkParts(parts?: any[]) {
+  async function walkParts(parts?: gmail_v1.Schema$MessagePart[]) {
     if (!parts) return;
     for (const p of parts) {
       const filename = p.filename || '';
@@ -151,14 +151,14 @@ export async function listCandidateMessages(
   gmail: GmailClient,
   userId: string,
   maxResults: number
-): Promise<any[]> {
+): Promise<gmail_v1.Schema$Message[]> {
   const resp = await gmail.users.messages.list({
     userId,
     maxResults,
     q: 'has:attachment newer_than:30d',
   });
   const messages = resp.data.messages || [];
-  const full: any[] = [];
+  const full: gmail_v1.Schema$Message[] = [];
   for (const m of messages) {
     if (!m.id) continue;
     const g = await gmail.users.messages.get({ userId, id: m.id, format: 'full' });

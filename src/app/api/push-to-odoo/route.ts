@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
-import { OdooBillPayload, Invoice } from '@/types';
+import { Invoice } from '@/types';
 import { storePdf } from '@/lib/pdf-storage';
 import { normalizeToOdooDateFormat } from '@/lib/utils';
 
@@ -130,14 +130,6 @@ export async function POST(request: NextRequest) {
           size: `${estimatedSizeKb} KB`,
           url: fileUrl
         });
-
-        const vendorSummary = [
-          invoice.vendor?.name,
-          invoice.vendor?.address,
-          invoice.vendor?.taxId ? `Tax ID: ${invoice.vendor.taxId}` : null,
-          invoice.vendor?.email,
-          invoice.vendor?.phone
-        ].filter(Boolean).join('\n');
 
         const baseLines = invoice.lineItems.map(item => {
           const safeQuantity = Number.isFinite(item.quantity) && item.quantity > 0 ? Number(item.quantity) : 1;
