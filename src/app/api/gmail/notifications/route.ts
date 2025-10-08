@@ -14,10 +14,6 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const gmail = await getGmailClient();
-    const userId = 'me';
-    const processedLabel = await ensureLabel(gmail, userId, getProcessedLabelName());
-
     const body = await request.json();
     // Handle Pub/Sub push endpoint URL verification challenge
     if (body && body.message === undefined && body.subscription && body.token) {
@@ -34,6 +30,11 @@ export async function POST(request: NextRequest) {
       emailAddress: decoded.emailAddress,
       historyId: decoded.historyId,
     });
+
+    // Acquire Gmail client after minimal parsing/logging to reduce latency
+    const gmail = await getGmailClient();
+    const userId = 'me';
+    const processedLabel = await ensureLabel(gmail, userId, getProcessedLabelName());
 
     // Fetch history to find new messages
     const history = await gmail.users.history.list({ userId, startHistoryId: decoded.historyId, historyTypes: ['messageAdded'] });
