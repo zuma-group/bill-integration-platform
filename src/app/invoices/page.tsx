@@ -59,7 +59,8 @@ export default function InvoicesPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         invoices: [invoice],
-        originalPdfBase64: invoice.pdfBase64,
+        // originalPdfBase64 optional; server will use invoice.pdfUrl when base64 not provided
+        ...(invoice.pdfBase64 ? { originalPdfBase64: invoice.pdfBase64 } : {}),
       }),
     });
 
