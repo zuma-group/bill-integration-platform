@@ -50,16 +50,12 @@ export default function InvoicesPage() {
   const getInvoiceKey = (invoice: Invoice) => invoice.id ?? `${invoice.invoiceNumber}-${Math.random().toString(36).slice(2)}`;
 
   const pushInvoiceToOdoo = async (invoice: Invoice) => {
-    if (!invoice.pdfBase64) {
-      throw new Error('Missing PDF data for this invoice. Re-upload the original document before syncing.');
-    }
-
     const response = await fetch('/api/push-to-odoo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         invoices: [invoice],
-        // originalPdfBase64 optional; server will use invoice.pdfUrl when base64 not provided
+        // Let server fetch or split as needed; S3 is used for stable URL
         ...(invoice.pdfBase64 ? { originalPdfBase64: invoice.pdfBase64 } : {}),
       }),
     });

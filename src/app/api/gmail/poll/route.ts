@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getGmailClient, ensureLabel, getProcessedLabelName, listCandidateMessages, getMessageAttachments } from '@/lib/gmail';
 import { extractInvoiceData } from '@/lib/gemini';
 import { Invoice } from '@/types';
-import { storePdf } from '@/lib/pdf-storage';
+import { uploadPdfBase64 } from '@/lib/s3';
 import { randomUUID } from 'crypto';
 
 export const runtime = 'nodejs';
@@ -50,21 +50,20 @@ export async function GET(request: NextRequest) {
             // Store attachment once and reference by URL to avoid large localStorage usage
             const safeBase = (msg.id || 'msg').replace(/[^a-zA-Z0-9_-]/g, '');
             const safeName = (att.filename || `attachment-${aIdx + 1}`).replace(/[^a-zA-Z0-9_.-]/g, '_');
-            const filename = `${safeBase}_${safeName}`;
-            storePdf(filename, att.base64, att.mimeType);
-            const fileUrl = `/api/attachments/${encodeURIComponent(filename)}`;
+            const key = `gmail/${safeBase}/${safeName}`;
+            const fileUrl = await uploadPdfBase64(key, att.base64, att.mimeType);
             // enrich invoices with base64 of the source doc and defaults
-            const invoices: Invoice[] = (ocr.invoices || []).map((inv, idx) => ({
+            const invoices: Invoice[] = (ocr.invoices || []).map((inv) => ({
               ...inv,
               id: randomUUID(),
               status: inv.status || 'extracted',
               extractedAt: inv.extractedAt || new Date().toISOString(),
               pdfUrl: fileUrl,
-              attachmentFilename: filename,
+              attachmentFilename: safeName,
               mimeType: att.mimeType,
             }));
             processed.push({ filename: att.filename, mimeType: att.mimeType, invoiceCount: ocr.invoiceCount, invoices });
-          } catch (err) {
+          } catch {
             processed.push({ filename: att.filename, mimeType: att.mimeType });
           }
         }

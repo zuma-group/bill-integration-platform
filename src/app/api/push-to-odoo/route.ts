@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
 import { Invoice } from '@/types';
-import { storePdf } from '@/lib/pdf-storage';
+import { uploadPdfBase64 } from '@/lib/s3';
 import { normalizeToOdooDateFormat } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic'; // Prevent caching
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     console.log('Request Content-Type:', contentType);
 
     let invoices: Invoice[];
-    let originalPdfBase64: string;
+    let originalPdfBase64: string | undefined;
 
     // Handle both FormData and JSON for compatibility
     if (contentType.includes('multipart/form-data')) {
@@ -72,12 +72,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (!originalPdfBase64) {
-        return NextResponse.json(
-          { error: 'No PDF provided in JSON' },
-          { status: 400 }
-        );
-      }
+      // originalPdfBase64 may be omitted; we'll derive from invoice.pdfUrl if needed
     } else {
       return NextResponse.json(
         { error: `Unsupported Content-Type: ${contentType}. Expected multipart/form-data or application/json` },
@@ -97,7 +92,10 @@ export async function POST(request: NextRequest) {
     const taskId = generateTaskId();
 
     // Split PDF if multiple invoices
-    const splitPdfs = await splitPdfByInvoices(originalPdfBase64, invoices);
+    let splitPdfs: Map<string, string> = new Map();
+    if (originalPdfBase64) {
+      splitPdfs = await splitPdfByInvoices(originalPdfBase64, invoices);
+    }
 
     const attachmentMeta: Array<{
       invoiceId: string;
@@ -107,29 +105,42 @@ export async function POST(request: NextRequest) {
       url?: string;
     }> = [];
 
-    // Transform data to match original working format
-    const odooPayload = {
-      invoices: invoices.map((invoice: Invoice, index) => {
+    // Transform data to match original working format (async for S3 upload)
+    const transformedInvoices = await Promise.all(invoices.map(async (invoice: Invoice, index) => {
         const invoiceKey = invoice.id ?? invoice.invoiceNumber ?? generateTaskId();
         const rawInvoiceNumber = invoice.invoiceNumber || `INV-${index + 1}`;
         const sanitizedNumber = rawInvoiceNumber.replace(/[^a-zA-Z0-9]/g, '_') || `INV_${index + 1}`;
         const filenameSuffix = invoiceKey.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8) || `IDX${index}`;
         const filename = `INV_${sanitizedNumber}_${filenameSuffix}.pdf`;
 
-        const pdfBase64 = splitPdfs.get(invoice.id || '') || originalPdfBase64;
-        const estimatedSizeKb = Math.round(pdfBase64.length * 0.75 / 1024);
+        const makeFileUrl = async (): Promise<string> => {
+          let base64 = splitPdfs.get(invoice.id || '') || originalPdfBase64;
+          if (!base64) {
+            if (!invoice.pdfUrl) {
+              throw new Error('Missing PDF data: neither originalPdfBase64 nor invoice.pdfUrl provided');
+            }
+            const fetched = await fetch(invoice.pdfUrl);
+            if (!fetched.ok) throw new Error(`Failed to fetch PDF from ${invoice.pdfUrl}`);
+            const blob = await fetched.arrayBuffer();
+            base64 = Buffer.from(blob).toString('base64');
+          }
+          const key = `odoo/${filename}`;
+          attachmentMeta.push({
+            invoiceId: invoiceKey,
+            invoiceNumber: rawInvoiceNumber,
+            filename,
+            size: `${Math.round((base64.length * 0.75) / 1024)} KB`,
+            url: undefined
+          });
+          const url = await uploadPdfBase64(key, base64, 'application/pdf');
+          // set url on last pushed meta
+          attachmentMeta[attachmentMeta.length - 1].url = url;
+          return url;
+        };
 
-        // Store PDF in memory and generate URL for Odoo to fetch
-        storePdf(filename, pdfBase64, 'application/pdf');
-        const fileUrl = `/api/attachments/${encodeURIComponent(filename)}`;
+        const fileUrl = await makeFileUrl();
 
-        attachmentMeta.push({
-          invoiceId: invoiceKey,
-          invoiceNumber: rawInvoiceNumber,
-          filename,
-          size: `${estimatedSizeKb} KB`,
-          url: fileUrl
-        });
+        // (meta entry already set in makeFileUrl)
 
         const baseLines = invoice.lineItems.map(item => {
           const safeQuantity = Number.isFinite(item.quantity) && item.quantity > 0 ? Number(item.quantity) : 1;
@@ -279,8 +290,8 @@ export async function POST(request: NextRequest) {
             url: fileUrl
           }]
         };
-      })
-    };
+    }))
+    const odooPayload = { invoices: transformedInvoices };
 
     // Forward to Odoo webhook (when configured)
     let odooResponseData = null;

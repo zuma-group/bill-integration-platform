@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import type { InvoiceStatus } from '@prisma/client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // PATCH /api/invoices/[id] - update invoice core fields and line items
-export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const data = await request.json();
 
     // Update invoice core
-    const updated = await prisma.invoice.update({
+    await prisma.invoice.update({
       where: { id },
       data: {
         invoiceNumber: data.invoiceNumber ?? undefined,
@@ -28,7 +29,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         paymentTerms: data.paymentTerms ?? undefined,
         pageNumber: data.pageNumber ?? undefined,
         pageNumbers: Array.isArray(data.pageNumbers) ? data.pageNumbers : undefined,
-        status: data.status ? String(data.status).toUpperCase() : undefined,
+        status: data.status ? (String(data.status).toUpperCase() as InvoiceStatus) : undefined,
         extractedAt: data.extractedAt ? new Date(data.extractedAt) : undefined,
         taskId: data.taskId ?? undefined,
         batchId: data.batchId ?? undefined,
@@ -41,7 +42,15 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       await prisma.$transaction([
         prisma.lineItem.deleteMany({ where: { invoiceId: id } }),
         prisma.lineItem.createMany({
-          data: data.lineItems.map((li: any, idx: number) => ({
+          data: data.lineItems.map((li: {
+            description: string;
+            partNumber?: string | null;
+            quantity: number;
+            unitPrice: number;
+            amount: number;
+            tax?: number;
+            position?: number;
+          }, idx: number) => ({
             invoiceId: id,
             description: li.description,
             partNumber: li.partNumber || null,
@@ -76,9 +85,9 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 }
 
 // DELETE /api/invoices/[id] - delete invoice and cascades
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     await prisma.invoice.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

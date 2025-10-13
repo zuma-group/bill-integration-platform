@@ -60,7 +60,15 @@ export async function POST(request: NextRequest) {
             taskId: inv.taskId || null,
             batchId: inv.batchId || null,
             lineItems: {
-              create: (inv.lineItems || []).map((li: any, idx: number) => ({
+              create: (inv.lineItems || []).map((li: {
+                description: string;
+                partNumber?: string | null;
+                quantity: number;
+                unitPrice: number;
+                amount: number;
+                tax?: number;
+                position?: number;
+              }, idx: number) => ({
                 description: li.description,
                 partNumber: li.partNumber || null,
                 quantity: li.quantity,
