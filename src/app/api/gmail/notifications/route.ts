@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getGmailClient, getMessageAttachments, ensureLabel, getProcessedLabelName } from '@/lib/gmail';
 import { extractInvoiceData } from '@/lib/gemini';
-import { storePdf } from '@/lib/pdf-storage';
+import { uploadPdfBase64 } from '@/lib/s3';
 import { randomUUID } from 'crypto';
 import { Invoice } from '@/types';
 import { enqueueInvoices } from '@/lib/server-queue';
@@ -74,17 +74,16 @@ export async function POST(request: NextRequest) {
             const ocr = await extractInvoiceData(att.base64, att.mimeType);
             const safeBase = (msg.id || 'msg').replace(/[^a-zA-Z0-9_-]/g, '');
             const safeName = (att.filename || `attachment-${aIdx + 1}`).replace(/[^a-zA-Z0-9_.-]/g, '_');
-            const filename = `${safeBase}_${safeName}`;
-            storePdf(filename, att.base64, att.mimeType);
-            const fileUrl = `/api/attachments/${encodeURIComponent(filename)}`;
+            const key = `gmail/${safeBase}/${safeName}`;
+            const fileUrl = await uploadPdfBase64(key, att.base64, att.mimeType);
 
-            const invoices: Invoice[] = (ocr.invoices || []).map((inv, idx) => ({
+            const invoices: Invoice[] = (ocr.invoices || []).map((inv) => ({
               ...inv,
               id: randomUUID(),
               status: 'extracted',
               extractedAt: new Date().toISOString(),
               pdfUrl: fileUrl,
-              attachmentFilename: filename,
+              attachmentFilename: safeName,
               mimeType: att.mimeType,
             }));
             enqueueInvoices(invoices);
