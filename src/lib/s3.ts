@@ -1,4 +1,5 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import type { PutObjectCommandInput } from '@aws-sdk/client-s3';
 
 const s3 = new S3Client({
   region: process.env.AWS_REGION!,
@@ -12,7 +13,7 @@ const s3 = new S3Client({
 
 export async function uploadPdfBase64(key: string, base64: string, contentType = 'application/pdf') {
   const Body = Buffer.from(base64, 'base64');
-  const params: any = {
+  const params: PutObjectCommandInput = {
     Bucket: process.env.S3_BUCKET!,
     Key: key,
     Body,
