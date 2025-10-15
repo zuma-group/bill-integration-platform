@@ -175,10 +175,11 @@ export async function POST(request: NextRequest) {
         });
 
         const subtotalValue = Number(
-          baseLines.reduce((sum, line) => sum + line.subtotal, 0).toFixed(2)
+          baseLines.reduce((sum, line) => sum + Number(line.subtotal || 0), 0).toFixed(2)
         );
 
-        const taxAmountValue = Number((invoice.taxAmount ?? 0).toFixed(2));
+        const rawTax = Number(invoice.taxAmount ?? 0);
+        const taxAmountValue = Number((Number.isFinite(rawTax) ? rawTax : 0).toFixed(2));
         const lines = [...baseLines];
 
         if (Math.abs(taxAmountValue) > 0) {

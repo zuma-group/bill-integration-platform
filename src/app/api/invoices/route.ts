@@ -21,12 +21,23 @@ export async function GET(request: NextRequest) {
       prisma.invoice.count(),
     ]);
 
-    // Normalize status to lowercase for frontend expectations and flatten first attachment
+    // Normalize: lowercase status, numeric fields to numbers, and flatten first attachment
     const normalized = items.map((inv) => {
       const firstAtt = Array.isArray(inv.attachments) && inv.attachments.length > 0 ? inv.attachments[0] : undefined;
+      const normalizedLineItems = (inv.lineItems || []).map((li: any) => ({
+        ...li,
+        quantity: Number(li.quantity),
+        unitPrice: Number(li.unitPrice),
+        amount: Number(li.amount),
+        tax: Number(li.tax ?? 0),
+      }));
       return {
         ...inv,
         status: String(inv.status).toLowerCase(),
+        subtotal: Number(inv.subtotal),
+        taxAmount: Number(inv.taxAmount ?? 0),
+        total: Number(inv.total),
+        lineItems: normalizedLineItems,
         pdfUrl: firstAtt?.url,
         attachmentFilename: firstAtt?.filename,
         mimeType: firstAtt?.mimeType,
@@ -75,20 +86,31 @@ export async function POST(request: NextRequest) {
               create: (inv.lineItems || []).map((li: {
                 description: string;
                 partNumber?: string | null;
-                quantity: number;
-                unitPrice: number;
-                amount: number;
-                tax?: number;
-                position?: number;
-              }, idx: number) => ({
-                description: li.description,
-                partNumber: li.partNumber || null,
-                quantity: li.quantity,
-                unitPrice: li.unitPrice,
-                amount: li.amount,
-                tax: li.tax ?? 0,
-                position: li.position ?? idx + 1,
-              })),
+                quantity: number | null | undefined;
+                unitPrice: number | null | undefined;
+                amount: number | null | undefined;
+                tax?: number | null | undefined;
+                position?: number | null | undefined;
+              }, idx: number) => {
+                const safeQuantity = Number.isFinite(li?.quantity as number) && (li?.quantity as number) > 0 ? Number(li?.quantity) : 1;
+                const rawAmount = Number.isFinite(li?.amount as number) ? Number(li?.amount) : 0;
+                const derivedUnit = Number.isFinite(li?.unitPrice as number) && (li?.unitPrice as number) > 0
+                  ? Number(li?.unitPrice)
+                  : (safeQuantity > 0 ? rawAmount / safeQuantity : 0);
+                const unitPrice = Number((Number.isFinite(derivedUnit) ? derivedUnit : 0).toFixed(2));
+                const amount = Number((Number.isFinite(rawAmount) ? rawAmount : unitPrice * safeQuantity).toFixed(2));
+                const tax = Number.isFinite(li?.tax as number) ? Number(li?.tax) : 0;
+
+                return {
+                  description: li.description,
+                  partNumber: li.partNumber || null,
+                  quantity: safeQuantity,
+                  unitPrice,
+                  amount,
+                  tax,
+                  position: (li?.position ?? idx + 1) as number,
+                };
+              }),
             },
             attachments: inv.pdfUrl || inv.attachmentFilename
               ? {
@@ -107,12 +129,23 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    // Normalize status to lowercase and flatten attachment in response
+    // Normalize: lowercase status, numeric fields to numbers, and flatten attachment in response
     const normalized = created.map((inv) => {
       const firstAtt = Array.isArray(inv.attachments) && inv.attachments.length > 0 ? inv.attachments[0] : undefined;
+      const normalizedLineItems = (inv.lineItems || []).map((li: any) => ({
+        ...li,
+        quantity: Number(li.quantity),
+        unitPrice: Number(li.unitPrice),
+        amount: Number(li.amount),
+        tax: Number(li.tax ?? 0),
+      }));
       return {
         ...inv,
         status: String(inv.status).toLowerCase(),
+        subtotal: Number(inv.subtotal),
+        taxAmount: Number(inv.taxAmount ?? 0),
+        total: Number(inv.total),
+        lineItems: normalizedLineItems,
         pdfUrl: firstAtt?.url,
         attachmentFilename: firstAtt?.filename,
         mimeType: firstAtt?.mimeType,
