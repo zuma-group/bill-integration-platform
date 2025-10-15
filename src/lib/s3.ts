@@ -26,7 +26,7 @@ export async function uploadPdfBase64(key: string, base64: string, contentType =
     params.ACL = 'private';
   }
   await s3.send(new PutObjectCommand(params));
-  return getObjectUrl(key, contentType);
+  return getObjectUrl(key);
 }
 
 export function getPublicUrl(key: string): string {
@@ -51,7 +51,7 @@ export function shouldUseSignedUrls(): boolean {
   return process.env.S3_SIGNED_URLS === 'true' || !process.env.S3_PUBLIC_BASE_URL || process.env.S3_USE_ACL === 'true';
 }
 
-export async function getObjectUrl(key: string, contentType = 'application/pdf'): Promise<string> {
+export async function getObjectUrl(key: string): Promise<string> {
   if (shouldUseSignedUrls()) {
     return await getSignedObjectUrl(key);
   }

@@ -4,6 +4,15 @@ import { prisma } from '@/lib/prisma';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Minimal shape for line items coming from Prisma including possible Decimal/unknown types
+type UnknownLineItem = {
+  quantity?: unknown;
+  unitPrice?: unknown;
+  amount?: unknown;
+  tax?: unknown;
+  [key: string]: unknown;
+};
+
 // GET /api/invoices - list invoices (basic pagination)
 export async function GET(request: NextRequest) {
   try {
@@ -24,7 +33,7 @@ export async function GET(request: NextRequest) {
     // Normalize: lowercase status, numeric fields to numbers, and flatten first attachment
     const normalized = items.map((inv) => {
       const firstAtt = Array.isArray(inv.attachments) && inv.attachments.length > 0 ? inv.attachments[0] : undefined;
-      const normalizedLineItems = (inv.lineItems || []).map((li: any) => ({
+      const normalizedLineItems = (inv.lineItems || []).map((li: UnknownLineItem) => ({
         ...li,
         quantity: Number(li.quantity),
         unitPrice: Number(li.unitPrice),
@@ -132,7 +141,7 @@ export async function POST(request: NextRequest) {
     // Normalize: lowercase status, numeric fields to numbers, and flatten attachment in response
     const normalized = created.map((inv) => {
       const firstAtt = Array.isArray(inv.attachments) && inv.attachments.length > 0 ? inv.attachments[0] : undefined;
-      const normalizedLineItems = (inv.lineItems || []).map((li: any) => ({
+      const normalizedLineItems = (inv.lineItems || []).map((li: UnknownLineItem) => ({
         ...li,
         quantity: Number(li.quantity),
         unitPrice: Number(li.unitPrice),
