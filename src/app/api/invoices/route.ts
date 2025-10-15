@@ -21,7 +21,13 @@ export async function GET(request: NextRequest) {
       prisma.invoice.count(),
     ]);
 
-    return NextResponse.json({ total, items });
+    // Normalize status to lowercase for frontend expectations ('extracted' | 'synced')
+    const normalized = items.map((inv) => ({
+      ...inv,
+      status: String(inv.status).toLowerCase(),
+    }));
+
+    return NextResponse.json({ total, items: normalized });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to list invoices' }, { status: 500 });
   }
@@ -95,7 +101,13 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    return NextResponse.json({ count: created.length, items: created });
+    // Normalize status to lowercase before returning to the client
+    const normalized = created.map((inv) => ({
+      ...inv,
+      status: String(inv.status).toLowerCase(),
+    }));
+
+    return NextResponse.json({ count: normalized.length, items: normalized });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create invoices' }, { status: 500 });
   }

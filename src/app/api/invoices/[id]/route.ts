@@ -78,7 +78,9 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const final = await prisma.invoice.findUnique({ where: { id }, include: { lineItems: true, attachments: true } });
-    return NextResponse.json(final);
+    // Normalize status to lowercase for frontend expectations
+    const normalized = final ? { ...final, status: String(final.status).toLowerCase() } : null;
+    return NextResponse.json(normalized);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update invoice' }, { status: 500 });
   }
