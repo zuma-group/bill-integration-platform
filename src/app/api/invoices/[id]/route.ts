@@ -78,8 +78,16 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     }
 
     const final = await prisma.invoice.findUnique({ where: { id }, include: { lineItems: true, attachments: true } });
-    // Normalize status to lowercase for frontend expectations
-    const normalized = final ? { ...final, status: String(final.status).toLowerCase() } : null;
+    // Normalize status to lowercase and flatten first attachment
+    const normalized = final
+      ? {
+          ...final,
+          status: String(final.status).toLowerCase(),
+          pdfUrl: final.attachments?.[0]?.url,
+          attachmentFilename: final.attachments?.[0]?.filename,
+          mimeType: final.attachments?.[0]?.mimeType,
+        }
+      : null;
     return NextResponse.json(normalized);
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update invoice' }, { status: 500 });

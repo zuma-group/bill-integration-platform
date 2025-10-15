@@ -21,11 +21,17 @@ export async function GET(request: NextRequest) {
       prisma.invoice.count(),
     ]);
 
-    // Normalize status to lowercase for frontend expectations ('extracted' | 'synced')
-    const normalized = items.map((inv) => ({
-      ...inv,
-      status: String(inv.status).toLowerCase(),
-    }));
+    // Normalize status to lowercase for frontend expectations and flatten first attachment
+    const normalized = items.map((inv) => {
+      const firstAtt = Array.isArray(inv.attachments) && inv.attachments.length > 0 ? inv.attachments[0] : undefined;
+      return {
+        ...inv,
+        status: String(inv.status).toLowerCase(),
+        pdfUrl: firstAtt?.url,
+        attachmentFilename: firstAtt?.filename,
+        mimeType: firstAtt?.mimeType,
+      } as unknown as typeof inv & { pdfUrl?: string; attachmentFilename?: string; mimeType?: string };
+    });
 
     return NextResponse.json({ total, items: normalized });
   } catch (error) {
@@ -101,11 +107,17 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    // Normalize status to lowercase before returning to the client
-    const normalized = created.map((inv) => ({
-      ...inv,
-      status: String(inv.status).toLowerCase(),
-    }));
+    // Normalize status to lowercase and flatten attachment in response
+    const normalized = created.map((inv) => {
+      const firstAtt = Array.isArray(inv.attachments) && inv.attachments.length > 0 ? inv.attachments[0] : undefined;
+      return {
+        ...inv,
+        status: String(inv.status).toLowerCase(),
+        pdfUrl: firstAtt?.url,
+        attachmentFilename: firstAtt?.filename,
+        mimeType: firstAtt?.mimeType,
+      } as unknown as typeof inv & { pdfUrl?: string; attachmentFilename?: string; mimeType?: string };
+    });
 
     return NextResponse.json({ count: normalized.length, items: normalized });
   } catch (error) {
