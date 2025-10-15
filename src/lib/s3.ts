@@ -12,13 +12,17 @@ const s3 = new S3Client({
 
 export async function uploadPdfBase64(key: string, base64: string, contentType = 'application/pdf') {
   const Body = Buffer.from(base64, 'base64');
-  await s3.send(new PutObjectCommand({
+  const params: any = {
     Bucket: process.env.S3_BUCKET!,
     Key: key,
     Body,
     ContentType: contentType,
-    ACL: 'private', // or 'public-read' if you want
-  }));
+  };
+  // Some providers/buckets (e.g., Bucket owner enforced / R2) reject ACLs.
+  if (process.env.S3_USE_ACL === 'true') {
+    params.ACL = 'private';
+  }
+  await s3.send(new PutObjectCommand(params));
   return getPublicUrl(key);
 }
 
