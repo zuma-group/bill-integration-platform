@@ -1,4 +1,6 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
 import type { PutObjectCommandInput } from '@aws-sdk/client-s3';
 
 const s3 = new S3Client({
@@ -24,7 +26,7 @@ export async function uploadPdfBase64(key: string, base64: string, contentType =
     params.ACL = 'private';
   }
   await s3.send(new PutObjectCommand(params));
-  return getPublicUrl(key);
+  return getObjectUrl(key, contentType);
 }
 
 export function getPublicUrl(key: string): string {
@@ -35,4 +37,23 @@ export function getPublicUrl(key: string): string {
   }
   // Fallback to standard S3 URL
   return `https://${process.env.S3_BUCKET}.s3.${process.env.AWS_REGION}.amazonaws.com/${encodeURIComponent(key)}`;
+}
+
+export async function getSignedObjectUrl(key: string, expiresSeconds?: number): Promise<string> {
+  const Bucket = process.env.S3_BUCKET!;
+  const Key = key;
+  const command = new GetObjectCommand({ Bucket, Key, ResponseContentType: 'application/pdf' });
+  const expiresIn = Math.max(60, Math.min(60 * 60 * 24, Number(expiresSeconds || process.env.S3_SIGNED_URL_EXPIRES || 900)));
+  return await getSignedUrl(s3, command, { expiresIn });
+}
+
+export function shouldUseSignedUrls(): boolean {
+  return process.env.S3_SIGNED_URLS === 'true' || !process.env.S3_PUBLIC_BASE_URL || process.env.S3_USE_ACL === 'true';
+}
+
+export async function getObjectUrl(key: string, contentType = 'application/pdf'): Promise<string> {
+  if (shouldUseSignedUrls()) {
+    return await getSignedObjectUrl(key);
+  }
+  return Promise.resolve(getPublicUrl(key));
 }
