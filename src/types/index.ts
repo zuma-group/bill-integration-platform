@@ -163,6 +163,11 @@ export interface OdooBillPayload {
       subtotal: number;
     }>;
 
+    taxes?: Array<{
+      tax_type: string;
+      amount: number;
+    }>;
+
     // Attachments with URL for download (NO BASE64!)
     attachments: Array<{
       filename: string;
