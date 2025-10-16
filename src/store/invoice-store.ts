@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { Invoice, OdooRecord, Batch, PipelineStep, PipelineStatus } from '@/types';
-import { storage } from '@/lib/storage';
 
 interface InvoiceStore {
   // State
@@ -14,11 +13,11 @@ interface InvoiceStore {
   error: string | null;
 
   // Actions
-  loadData: () => void;
+  loadData: () => Promise<void>;
   setInvoices: (invoices: Invoice[]) => void;
-  addInvoice: (invoice: Invoice) => void;
-  updateInvoice: (id: string, updates: Partial<Invoice>) => void;
-  deleteInvoice: (id: string) => void;
+  addInvoice: (invoice: Invoice) => Promise<void>;
+  updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<void>;
+  deleteInvoice: (id: string) => Promise<void>;
 
   setOdooRecords: (records: OdooRecord[]) => void;
   addOdooRecord: (record: OdooRecord) => void;
@@ -54,57 +53,80 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
   isProcessing: false,
   error: null,
 
-  // Load data from localStorage
-  loadData: () => {
-    const invoices = storage.get('invoices') || [];
-    const odooRecords = storage.get('odooRecords') || [];
-    const batches = storage.get('batches') || [];
-    set({ invoices, odooRecords, batches });
+  // Load data from database via API
+  loadData: async () => {
+    try {
+      const res = await fetch('/api/invoices?take=200', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Failed to load invoices');
+      const data = await res.json();
+      const invoices: Invoice[] = Array.isArray(data.items) ? data.items : [];
+      set({ invoices });
+    } catch (err) {
+      console.error('loadData error:', err);
+    }
   },
 
   // Invoice actions
   setInvoices: (invoices) => {
-    storage.set('invoices', invoices);
     set({ invoices });
   },
 
-  addInvoice: (invoice) => {
-    const newInvoice = { ...invoice, id: invoice.id || crypto.randomUUID() };
-    const updatedInvoices = [...get().invoices, newInvoice];
-    storage.set('invoices', updatedInvoices);
-    set({ invoices: updatedInvoices });
+  addInvoice: async (invoice) => {
+    try {
+      const res = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(invoice),
+      });
+      if (!res.ok) throw new Error('Failed to create invoice');
+      const data = await res.json();
+      const created: Invoice[] = Array.isArray(data.items) ? data.items : data.item ? [data.item] : [];
+      if (created.length > 0) {
+        set({ invoices: [...get().invoices, created[0]] });
+      }
+    } catch (err) {
+      console.error('addInvoice error:', err);
+    }
   },
 
-  updateInvoice: (id, updates) => {
-    const updatedInvoices = get().invoices.map(inv =>
-      inv.id === id ? { ...inv, ...updates } : inv
-    );
-    storage.set('invoices', updatedInvoices);
-    set({ invoices: updatedInvoices });
+  updateInvoice: async (id, updates) => {
+    try {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      });
+      if (!res.ok) throw new Error('Failed to update invoice');
+      const updated = (await res.json()) as Invoice;
+      set({
+        invoices: get().invoices.map((inv) => (inv.id === id ? { ...inv, ...updated } : inv)),
+      });
+    } catch (err) {
+      console.error('updateInvoice error:', err);
+    }
   },
 
-  deleteInvoice: (id) => {
-    const updatedInvoices = get().invoices.filter(inv => inv.id !== id);
-    storage.set('invoices', updatedInvoices);
-    set({ invoices: updatedInvoices });
+  deleteInvoice: async (id) => {
+    try {
+      const res = await fetch(`/api/invoices/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete invoice');
+      set({ invoices: get().invoices.filter((inv) => inv.id !== id) });
+    } catch (err) {
+      console.error('deleteInvoice error:', err);
+    }
   },
 
-  // Odoo records actions
+  // Odoo records actions (kept in-memory only)
   setOdooRecords: (records) => {
-    storage.set('odooRecords', records);
     set({ odooRecords: records });
   },
 
   addOdooRecord: (record) => {
-    const updatedRecords = [...get().odooRecords, record];
-    storage.set('odooRecords', updatedRecords);
-    set({ odooRecords: updatedRecords });
+    set({ odooRecords: [...get().odooRecords, record] });
   },
 
   deleteOdooRecord: (id) => {
-    const updatedRecords = get().odooRecords.filter(rec => rec.id !== id);
-    storage.set('odooRecords', updatedRecords);
-    set({ odooRecords: updatedRecords });
+    set({ odooRecords: get().odooRecords.filter((rec) => rec.id !== id) });
   },
 
   // Batch and selection actions
@@ -173,80 +195,25 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
     if (entries.length === 0) {
       return;
     }
-
-    set((state) => {
-      const now = new Date().toISOString();
-      const updateMap = new Map<string, { invoice: Invoice; changes?: Partial<Invoice> }>();
-      entries.forEach(entry => {
-        if (!entry.invoice.id) return;
-        updateMap.set(entry.invoice.id, entry);
-      });
-
-      const updatedInvoices = state.invoices.map(inv => {
-        const entry = updateMap.get(inv.id || '');
-        if (!entry) return inv;
-
-        const { changes } = entry;
-        const merged: Invoice = {
-          ...inv,
-          ...changes,
-          status: 'synced',
-          syncedAt: changes?.syncedAt || now,
-        };
-        return merged;
-      });
-
-      storage.set('invoices', updatedInvoices);
-
-      const previousStatuses = new Map<string, string>();
-      state.invoices.forEach(inv => {
-        if (inv.id) previousStatuses.set(inv.id, inv.status);
-      });
-
-      const updatedOdooRecords = [...state.odooRecords];
-      entries.forEach(entry => {
-        const invoiceId = entry.invoice.id;
-        if (!invoiceId) return;
-        const priorStatus = previousStatuses.get(invoiceId);
-        if (priorStatus === 'synced') {
-          return; // Prevent duplicate records
-        }
-
-        const sourceInvoice = updatedInvoices.find(inv => inv.id === invoiceId);
-        if (!sourceInvoice) return;
-
-        const odooRecord: OdooRecord = {
-          id: crypto.randomUUID(),
-          move_type: 'in_invoice',
-          partner_id: sourceInvoice.vendor.name,
-          invoice_date: sourceInvoice.invoiceDate,
-          invoice_date_due: sourceInvoice.dueDate,
-          ref: sourceInvoice.invoiceNumber,
-          customer_po: sourceInvoice.customerPoNumber,
-          invoice_line_ids: sourceInvoice.lineItems.map(item => ({
-            name: item.description,
-            product_ref: item.partNumber,
-            quantity: item.quantity,
-            price_unit: item.unitPrice,
-            price_subtotal: item.amount,
-            tax_amount: item.tax,
-          })),
-          amount_total: sourceInvoice.total,
-          state: 'draft',
-          created_at: now,
-        };
-
-        updatedOdooRecords.push(odooRecord);
-      });
-
-      if (updatedOdooRecords.length !== state.odooRecords.length) {
-        storage.set('odooRecords', updatedOdooRecords);
+    const now = new Date().toISOString();
+    const update = async () => {
+      const promises = entries
+        .filter((e) => e.invoice.id)
+        .map((e) =>
+          fetch(`/api/invoices/${encodeURIComponent(e.invoice.id as string)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...(e.changes || {}), status: 'synced', syncedAt: now }),
+          })
+        );
+      try {
+        await Promise.all(promises);
+        // Refresh invoices from DB
+        await get().loadData();
+      } catch (err) {
+        console.error('syncToOdoo error:', err);
       }
-
-      return {
-        invoices: updatedInvoices,
-        odooRecords: updatedOdooRecords,
-      };
-    });
+    };
+    update();
   },
 }));

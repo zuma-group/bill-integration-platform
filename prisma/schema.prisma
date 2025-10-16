@@ -1,0 +1,86 @@
+// PostgreSQL Database Schema aligned with current API payloads
+// - Stores invoices, line items, batches, and S3 attachment links
+// - Vendor and customer are stored as JSON to match API shape
+// - Monetary values use Decimal for precision
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Invoice {
+  id               String         @id @default(cuid())
+  invoiceNumber    String
+  customerPoNumber String?
+  invoiceDate      DateTime
+  dueDate          DateTime?
+  vendor           Json           // { name, address, taxId, email, phone }
+  customer         Json           // { name, address }
+  subtotal         Decimal        @db.Decimal(15, 2)
+  taxAmount        Decimal        @db.Decimal(15, 2) @default(0)
+  total            Decimal        @db.Decimal(15, 2)
+  taxType          String?
+  currency         String         @default("USD")
+  paymentTerms     String?
+  pageNumber       Int?
+  pageNumbers      Int[]
+  status           InvoiceStatus  @default(EXTRACTED)
+  extractedAt      DateTime       @default(now())
+  taskId           String?
+  batchId          String?
+  batch            Batch?         @relation(fields: [batchId], references: [id])
+  lineItems        LineItem[]
+  attachments      Attachment[]
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([invoiceNumber])
+  @@index([status])
+  @@index([batchId])
+}
+
+model LineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  partNumber  String?
+  quantity    Decimal  @db.Decimal(15, 3)
+  unitPrice   Decimal  @db.Decimal(15, 2)
+  amount      Decimal  @db.Decimal(15, 2)
+  tax         Decimal  @db.Decimal(15, 2) @default(0)
+  position    Int?
+  createdAt   DateTime @default(now())
+
+  @@index([invoiceId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  filename  String
+  url       String   // S3 object URL
+  mimeType  String?
+  sizeKb    Int?
+  createdAt DateTime @default(now())
+
+  @@index([invoiceId])
+}
+
+model Batch {
+  id           String    @id @default(cuid())
+  invoices     Invoice[]
+  totalAmount  Decimal?  @db.Decimal(15, 2)
+  invoiceCount Int?
+  createdAt    DateTime  @default(now())
+}
+
+enum InvoiceStatus {
+  EXTRACTED
+  SYNCED
+}

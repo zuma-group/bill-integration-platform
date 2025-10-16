@@ -323,6 +323,22 @@ export default function HomePage() {
     setSuccess('Invoices saved locally for later syncing.');
   };
 
+  const handleSaveToS3 = async () => {
+    if (!extractedInvoices) return;
+    try {
+      const res = await fetch('/api/invoices/upload-to-s3', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoices: extractedInvoices, originalPdfBase64 }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to upload to S3');
+      setSuccess(`Uploaded ${json.attachmentInfo?.length || 0} file(s) to S3`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to upload to S3');
+    }
+  };
+
   const handleTestConnection = async () => {
     console.log('🧪 Testing Odoo connection...');
     setError(null);
@@ -400,6 +416,14 @@ export default function HomePage() {
                   onClick={handleSaveLocally}
                 >
                   Save Locally
+                </Button>
+                <Button
+                  variant="secondary"
+                  icon={Link}
+                  onClick={handleSaveToS3}
+                  disabled={!originalPdfBase64 && !(extractedInvoices?.[0]?.pdfBase64)}
+                >
+                  Save to S3
                 </Button>
                 <Button
                   variant="danger"
