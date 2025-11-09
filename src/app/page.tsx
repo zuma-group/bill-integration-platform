@@ -232,12 +232,18 @@ export default function HomePage() {
           (att.invoiceNumber && att.invoiceNumber === invoice.invoiceNumber)
         );
 
+        // Find the corresponding invoice in the result payload to get companyId
+        const payloadInvoice = result.payload?.invoices?.find((inv: { invoiceNumber: string }) => 
+          inv.invoiceNumber === invoice.invoiceNumber
+        );
+
         return {
           invoice,
           changes: {
             pdfUrl: attachment?.url,
             attachmentFilename: attachment?.filename,
             syncedAt: syncTimestamp,
+            companyId: payloadInvoice?.companyId, // Include company ID from payload
           } as Partial<Invoice>,
         };
       });

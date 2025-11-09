@@ -242,6 +242,7 @@ export async function POST(request: NextRequest) {
           invoiceNumber: rawInvoiceNumber,
           customerPoNumber: invoice.customerPoNumber || '',
           company_id: determineCompanyId(invoice.customerPoNumber),
+          companyId: determineCompanyId(invoice.customerPoNumber), // Store for display in UI
           invoiceDate: normalizeToOdooDateFormat(invoice.invoiceDate),
           dueDate: normalizeToOdooDateFormat(invoice.dueDate),
           vendor: {

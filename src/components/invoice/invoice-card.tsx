@@ -65,6 +65,11 @@ export function InvoiceCard({ invoice, onSendToOdoo, isSending = false }: Invoic
               <Hash className="w-4 h-4 mr-2 text-secondary-text" />
               <span className="text-secondary-text">PO#:</span>
               <span className="ml-2 font-medium text-accent-action">{invoice.customerPoNumber}</span>
+              {invoice.companyId && (
+                <Badge variant="info" size="sm" className="ml-2">
+                  Company {invoice.companyId}
+                </Badge>
+              )}
             </div>
           )}
 

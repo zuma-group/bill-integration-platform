@@ -116,9 +116,16 @@ export function InvoiceDetails({ invoice }: InvoiceDetailsProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-lg font-bold text-accent-action">
-              {invoice.customerPoNumber}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-lg font-bold text-accent-action">
+                {invoice.customerPoNumber}
+              </p>
+              {invoice.companyId && (
+                <Badge variant="info" size="lg">
+                  Company {invoice.companyId} {invoice.companyId === 1 ? '(Zuma Lift Service)' : '(Zuma Sales LLC)'}
+                </Badge>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}

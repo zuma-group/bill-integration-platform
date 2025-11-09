@@ -24,6 +24,7 @@ export interface Invoice {
   id?: string;
   invoiceNumber: string;
   customerPoNumber?: string;
+  companyId?: number; // Company ID: 1 (Zuma Lift Service) or 2 (Zuma Sales LLC)
   invoiceDate: string;
   dueDate: string;
   vendor: Vendor;
