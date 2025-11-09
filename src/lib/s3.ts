@@ -14,9 +14,13 @@ const s3 = new S3Client({
 });
 
 export async function uploadPdfBase64(key: string, base64: string, contentType = 'application/pdf') {
+  if (!process.env.S3_BUCKET) {
+    throw new Error('S3_BUCKET environment variable is not configured');
+  }
+  
   const Body = Buffer.from(base64, 'base64');
   const params: PutObjectCommandInput = {
-    Bucket: process.env.S3_BUCKET!,
+    Bucket: process.env.S3_BUCKET,
     Key: key,
     Body,
     ContentType: contentType,
@@ -40,7 +44,11 @@ export function getPublicUrl(key: string): string {
 }
 
 export async function getSignedObjectUrl(key: string, expiresSeconds?: number): Promise<string> {
-  const Bucket = process.env.S3_BUCKET!;
+  if (!process.env.S3_BUCKET) {
+    throw new Error('S3_BUCKET environment variable is not configured');
+  }
+  
+  const Bucket = process.env.S3_BUCKET;
   const Key = key;
   const command = new GetObjectCommand({ Bucket, Key, ResponseContentType: 'application/pdf' });
   const expiresIn = Math.max(60, Math.min(60 * 60 * 24, Number(expiresSeconds || process.env.S3_SIGNED_URL_EXPIRES || 900)));

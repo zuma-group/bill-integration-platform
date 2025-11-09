@@ -143,10 +143,20 @@ export async function POST(request: NextRequest) {
             size: `${Math.round((base64.length * 0.75) / 1024)} KB`,
             url: undefined
           });
-          const url = await uploadPdfBase64(key, base64, 'application/pdf');
-          // set url on last pushed meta
-          attachmentMeta[attachmentMeta.length - 1].url = url;
-          return url;
+          
+          // Try to upload to S3, but don't fail if S3 is not configured
+          try {
+            const url = await uploadPdfBase64(key, base64, 'application/pdf');
+            // set url on last pushed meta
+            attachmentMeta[attachmentMeta.length - 1].url = url;
+            return url;
+          } catch (s3Error) {
+            console.warn('S3 upload failed, falling back to data URL:', s3Error instanceof Error ? s3Error.message : s3Error);
+            // Return a data URL as fallback (not ideal for production but allows testing without S3)
+            const dataUrl = `data:application/pdf;base64,${base64}`;
+            attachmentMeta[attachmentMeta.length - 1].url = dataUrl;
+            return dataUrl;
+          }
         };
 
         const fileUrl = await makeFileUrl();

@@ -55,7 +55,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ total, items: normalized });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to list invoices' }, { status: 500 });
+    console.error('Error fetching invoices:', error);
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Failed to list invoices',
+      details: process.env.NODE_ENV === 'development' ? error : undefined 
+    }, { status: 500 });
   }
 }
 
@@ -163,7 +167,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ count: normalized.length, items: normalized });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create invoices' }, { status: 500 });
+    console.error('Error creating invoices:', error);
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : 'Failed to create invoices',
+      details: process.env.NODE_ENV === 'development' ? error : undefined 
+    }, { status: 500 });
   }
 }
 
