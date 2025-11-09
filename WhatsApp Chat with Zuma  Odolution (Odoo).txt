@@ -1,0 +1,872 @@
+10/17/25, 6:47 PM - Messages and calls are end-to-end encrypted. Only people in this chat can read, listen to, or share them. Learn more.
+7/26/22, 9:34 AM - Zeeshan CEO created group "Zuma | Odolution (Odoo)"
+10/17/25, 6:47 PM - Asfand added you
+10/17/25, 6:57 PM - Asfand: @⁨Waqas Sultan⁩ - you can connect with @⁨Gocha⁩ for workflow issues. He is our development lead and will be dealing the team directly. He goal is to make everything organized for us and for our partners. 
+
+Just so everyone is aware - 
+
+We are gonna set up KPIs for all our vendors based on their performance.  
+
+For the ERP team - we are setting based on timely delivery and quality. 
+
+The after production issues will impact the numbers we run going forward. Any issues that raise concerns amongst the users will be treated as a negative points towards the evaluation of our vendors/partners. 
+
+The minimum of 90% quality has been to be reached by a vendor in a quarter. 
+
+We will start from 100 going forward. 
+
+Each failure is counted as follows;
+
+1. Failure to deliver on time causes -1 point straight away. 
+2. Production failure causes -1 point straight away. 
+3. Missing a feature discussed causes -2 points.
+4. System down due to poor testing causes -3 points. 
+5. Failure to test any task end to end, and making sure its production ready will have be -2 points. 
+
+
+We believe we are generous with 90%. Hopefully this will clear the air for everyone and this is followed going forward. 
+
+Below 90% will call for an immediate discussion on how to reset. 
+
+Below 85% is immediate termination of contract. 
+
+Thankyou.
+10/17/25, 7:07 PM - Ammar Ahmed Khan: @⁨~Asfand⁩
+10/17/25, 7:11 PM - +92 335 2892466: TVH - Canada AI Vendor Bills have not been uploading the 2nd page for a while. I had sent a ticket in before but it is still ongoing. I have fixed this one as I needed to reconcile and Filip was posting payment incorrect. 
+
+https://erp.zumasales.com/web?db=live&signup_email=jillian%40zumasales.com&token=5XVg7AouThzzsrleft5u#id=570410&cids=2&menu_id=123&active_id=77846&model=account.move&view_type=form
+10/17/25, 7:42 PM - Gocha: Thanks, Asfand.
+
+Team, the issue Asfand mentioned is exactly the kind of gap we’re going to eliminate going forward.
+
+Starting today, I’ll be reviewing the current workflow and active tasks closely.
+
+Over the next few days, I’ll introduce new processes to keep everything organized, on schedule, and up to our quality standards.
+
+These will make tracking, reporting, and delivery smoother for everyone.
+
+I’ll also reach out to each of you individually to review your ongoing work and align on how we’ll operate moving forward.
+10/17/25, 8:27 PM - Ammar Ahmed Khan: can we connect for 5 min for this need to show you on staging @⁨~Asfand⁩ <This message was edited>
+10/17/25, 8:30 PM - Asfand: Yes
+10/17/25, 8:31 PM - Ammar Ahmed Khan: https://meet.google.com/bvc-tvod-snv
+10/17/25, 8:37 PM - Asfand: Joining in 10
+10/17/25, 9:44 PM - Ammar Ahmed Khan: <Media omitted>
+10/17/25, 9:56 PM - +92 335 2892466: thanks
+10/17/25, 9:56 PM - +92 335 2892466: next issue
+10/17/25, 9:56 PM - +92 335 2892466: the barcode automation rule is not workinb
+10/17/25, 9:56 PM - +92 335 2892466: https://erp.zumasales.com/web?reload=true#id=29&cids=2&menu_id=740&action=1139&model=base.automation&view_type=form
+10/17/25, 9:56 PM - +92 335 2892466: https://erp.zumasales.com/web?reload=true#id=30&cids=2&menu_id=740&action=1139&model=base.automation&view_type=form
+10/17/25, 9:57 PM - +92 335 2892466: this use to work fine in the previous version
+10/17/25, 9:57 PM - +92 335 2892466: can we see if we can fix this
+10/17/25, 10:01 PM - Ammar Ahmed Khan: Let me check
+10/17/25, 10:01 PM - Asfand: Use staging
+10/17/25, 11:05 PM - +92 335 2892466: https://erp.zumasales.com/web#id=11503&menu_id=1640&cids=1-2&action=3108&model=callrail.call.log&view_type=form
+10/17/25, 11:05 PM - +92 335 2892466: @⁨Ammar Ahmed Khan⁩ why didn't this Callrail record attach to our lead
+10/17/25, 11:05 PM - +92 335 2892466: even though this person has a lead
+10/18/25, 11:19 AM - Ammar Ahmed Khan: I will check and fix it.
+10/20/25, 2:08 PM - Ammar Ahmed Khan: TVH AI bills issue fixed on staging.
+10/20/25, 2:29 PM - Asfand: Please test and push
+10/20/25, 2:49 PM - Ammar Ahmed Khan: Please find Day start Report.
+
+1: TVH AI bills issue fixed on staging.
+2: Barcode automation. In progress
+3: New AI product fetching. In progress
+4: Call Rail record. In queue
+10/20/25, 3:01 PM - Ammar Ahmed Khan: @⁨Gocha⁩ could you please share the details which you wanna see on tasks from API.
+10/20/25, 3:02 PM - +92 341 2454273: @⁨~Asfand⁩  when are you available for the stakeholders meeting? @⁨Zeeshan CEO⁩ @⁨Waqas Sultan⁩  will also join.
+10/20/25, 3:06 PM - Gocha: Sure I will in a bit
+10/20/25, 3:49 PM - Gocha: <Media omitted>
+10/20/25, 4:00 PM - Ammar Ahmed Khan: Thankyou let me get it start.
+10/20/25, 4:08 PM - Asfand: I guess tomorrow morning
+10/20/25, 4:09 PM - Ammar Ahmed Khan: Base on this, on each API call system will return all active task.
+10/20/25, 4:11 PM - Gocha: To Do, In Progress, Done and other related stages, to follow whole lifecycle of a task
+10/20/25, 4:12 PM - Gocha: If it's not currently active, for example in Backlog, Blocked or similar, I'd like to get that data as well
+10/20/25, 4:16 PM - Asfand: Or if you guys want to fo 7:30
+10/20/25, 4:16 PM - Asfand: @⁨~Usama Shahid⁩ I can do 7:30
+10/20/25, 4:17 PM - Ammar Ahmed Khan: How frequently are you going to request this data? 
+
+Once every day or Every hour?
+10/20/25, 4:17 PM - +92 341 2454273: @⁨Waqas Sultan⁩ @⁨Zeeshan CEO⁩  @⁨Misbah⁩  are you available?
+10/20/25, 4:18 PM - Misbah: Yes i am
+10/20/25, 4:22 PM - Gocha: Schedule two syncs daily (start and end of day). Include an updated_since parameter so we only retrieve deltas.
+10/20/25, 4:27 PM - +92 341 2454273: https://meet.google.com/qhf-abfo-dvw
+10/20/25, 6:45 PM - Ammar Ahmed Khan: @⁨~Asfand⁩ can we connect on this?
+10/20/25, 9:30 PM - Ammar Ahmed Khan: Day End Report:
+
+1: TVH AI bills issue fixed. Deployed on live
+2: Barcode automation. Done on staging
+3: New AI product fetching. Done on staging
+4: API payload for fetching tasks. In progress
+5: Call Rail record. Need to discuss <This message was edited>
+10/20/25, 10:22 PM - +92 335 2892466: I am available now
+10/20/25, 10:22 PM - +92 335 2892466: if you want to connect
+10/20/25, 10:30 PM - Ammar Ahmed Khan: Yes. Sharing link
+10/20/25, 10:32 PM - Ammar Ahmed Khan: https://meet.google.com/ndu-frof-hwf
+10/20/25, 10:43 PM - Ammar Ahmed Khan: @⁨~Asfand⁩
+10/20/25, 10:44 PM - +92 335 2892466: sory
+10/20/25, 10:44 PM - +92 335 2892466: yaar video bhejdo
+10/20/25, 10:44 PM - +92 335 2892466: mein reply krta hn
+10/20/25, 10:44 PM - +92 335 2892466: ya voice note just stuck
+10/20/25, 10:44 PM - +92 335 2892466: in here
+10/20/25, 10:44 PM - Ammar Ahmed Khan: okay, sending voice note.
+10/20/25, 11:17 PM - +92 335 2892466: Please push first two when tested properly
+10/20/25, 11:18 PM - +92 335 2892466: Product Ai fetch, wo combination wala kaam hogya?
+10/21/25, 10:13 AM - Gocha: Afternoon team, @⁨Ammar Ahmed Khan⁩ what's the status of endpoint?
+10/21/25, 12:21 PM - Ammar Ahmed Khan: Hey Gocha, 
+It is in progress, it will be completed by tomorrow morning.
+10/21/25, 12:22 PM - Ammar Ahmed Khan: combination wala nahi hwa product fetch hogya with full MPN.
+10/21/25, 12:38 PM - Ammar Ahmed Khan: Please find the Day start report.
+
+1: API payload for fetching tasks. In progress
+2: AI product fetch with MPN combination. In progress
+3: Barcode automation. Will deploy on live.
+10/21/25, 6:07 PM - +92 335 2892466: was the barcode thing fixed?
+10/21/25, 6:07 PM - +92 335 2892466: @⁨Ammar Ahmed Khan⁩
+10/21/25, 6:08 PM - Ammar Ahmed Khan: yes deployed on live
+10/21/25, 6:09 PM - +92 335 2892466: is it through automated action?
+10/21/25, 6:10 PM - Ammar Ahmed Khan: For barcode automation we did not use the automation rule, we had an application which was created for v14 and convert that application deployed on 17
+10/21/25, 6:10 PM - +92 335 2892466: okay
+10/21/25, 6:11 PM - +92 335 2892466: okay
+10/21/25, 6:11 PM - +92 341 2454273: 1 ammar, please discuss the authentication side as well. We should not keep apis public.
+10/21/25, 6:11 PM - +92 335 2892466: can I use a server action to generate barcodes where it was missed?
+10/21/25, 6:13 PM - +92 335 2892466: Was tvh issue fixed?
+10/21/25, 6:14 PM - Ammar Ahmed Khan: yes deployed on live
+10/21/25, 6:14 PM - Ammar Ahmed Khan: let me create a server action for this
+10/21/25, 6:17 PM - Ammar Ahmed Khan: <Media omitted>
+10/21/25, 6:21 PM - +92 341 2454273: I think bearer token authentication should be enough. But we don't know what your limitations might be on your end.
+10/21/25, 6:42 PM - Ammar Ahmed Khan: <Media omitted>
+10/21/25, 7:17 PM - Ammar Ahmed Khan: @⁨~Asfand⁩ available to connect? need to discuss new AI bill
+10/21/25, 7:41 PM - Gocha: Yes, bearer token authentication works fine for our side
+10/21/25, 8:03 PM - Ammar Ahmed Khan: noted, let me get it done
+10/21/25, 8:04 PM - Gocha: Thank you
+10/21/25, 9:21 PM - Asfand: Sure
+10/21/25, 9:21 PM - Asfand: Link?
+10/21/25, 9:22 PM - Ammar Ahmed Khan: https://meet.google.com/zwd-bjkx-spp
+10/21/25, 9:53 PM - Ammar Ahmed Khan: Please find the Day End report.
+
+1: API payload for fetching tasks. Done on staging
+2: AI product fetch with MPN combination. Done on staging
+3: Barcode automation. Deployed on live
+4: Bearer token authentication for API. In progress
+5: Eco fees in AI bills payload. Yet to start
+10/21/25, 9:54 PM - +92 335 2892466: Does all of these have tasks?
+10/21/25, 9:55 PM - Ammar Ahmed Khan: yes.
+10/21/25, 9:55 PM - +92 335 2892466: Okay
+10/22/25, 12:50 PM - Ammar Ahmed Khan: Please Find Day start Report.
+
+1. Bearer token authentication for API. In progress
+2. Eco fees in AI bills payload. In progress
+3. AI PDF Partner Name many to many. In queue
+10/22/25, 2:10 PM - Ammar Ahmed Khan: <Media omitted>
+10/22/25, 2:11 PM - Gocha: Thanks @⁨Ammar Ahmed Khan⁩, I'll set it up and let you know
+10/22/25, 2:12 PM - Gocha: When it's done or if I'll need some adjustments
+10/22/25, 2:13 PM - Ammar Ahmed Khan: sure
+10/22/25, 6:25 PM - Ammar Ahmed Khan: <Media omitted>
+10/22/25, 6:25 PM - Ammar Ahmed Khan: <Media omitted>
+10/22/25, 10:16 PM - Ammar Ahmed Khan: Please Find Day end Report.
+
+1. Bearer token authentication for API. Done on staging
+2. Eco fees in AI bills payload. Done on staging
+3. AI PDF Partner Name many to many. In progress
+10/22/25, 11:13 PM - +92 335 2892466: @⁨Ammar Ahmed Khan⁩ - please fix the issue with notifications \
+10/22/25, 11:16 PM - +92 335 2892466: the notifications do not go away until refreshed
+10/22/25, 11:16 PM - +92 335 2892466: nor do they show up when a new notification comes
+10/22/25, 11:16 PM - +92 335 2892466: until refreshed
+10/22/25, 11:17 PM - +92 335 2892466: please test this and fix this
+10/23/25, 12:09 AM - +92 335 2892466: This is just another use case we will discuss
+10/23/25, 12:10 AM - +92 335 2892466: Also, the staging, when I send a lordco bill it fails
+10/23/25, 1:58 AM - Asfand: @⁨~Usama Shahid⁩ can you look into a task for me? There is a development we did but I dont like how it works. @⁨Ammar Ahmed Khan⁩ can you show him the aftermarket variant task?
+10/23/25, 7:52 AM - +92 341 2454273: Ok. @⁨Ammar Ahmed Khan⁩  please discuss it with me today.
+10/23/25, 10:36 AM - Ammar Ahmed Khan: Noted
+10/23/25, 10:37 AM - Ammar Ahmed Khan: Can you send me the bill no
+10/23/25, 10:39 AM - Ammar Ahmed Khan: Sure
+10/23/25, 10:39 AM - Gocha: <Media omitted>
+10/23/25, 10:40 AM - Gocha: What isn't really efficient as it makes me do around 18 api calls
+10/23/25, 10:41 AM - Gocha: Also, I need second version of this pipeline, everything same, plus that update, but without write permission as I want to get the data from live odoo, not staging
+10/23/25, 10:42 AM - Ammar Ahmed Khan: Okay let me get it start
+10/23/25, 10:45 AM - Gocha: Actually get me the live version without update and write permission as soon as possible first, it's a quick fix
+10/23/25, 10:45 AM - Gocha: Then the above two requests
+10/23/25, 10:46 AM - Gocha: So today the quick one, tomorrow the other two, sounds good?
+10/23/25, 12:25 PM - Ammar Ahmed Khan: Yes sure
+10/23/25, 12:28 PM - Ammar Ahmed Khan: Day Start Plan
+
+1- pipeline API live. In progress 
+2- AI pdf Partner name. In progress 
+3- Notification bug. In queue 
+4- Equipment delivery service task. In queue
+10/23/25, 12:58 PM - Ammar Ahmed Khan: <Media omitted>
+10/23/25, 12:58 PM - Ammar Ahmed Khan: <Media omitted>
+10/23/25, 12:58 PM - Ammar Ahmed Khan: <Media omitted>
+10/23/25, 4:12 PM - +92 335 2892466: @⁨Ammar Ahmed Khan⁩ - this notification issue, would this be fixed today?
+10/23/25, 4:17 PM - +92 341 2454273: Its how this notification has been implemented at the corr of odoo. Such things are not made to be easily customisable. It may take time to explore.
+10/23/25, 4:17 PM - +92 335 2892466: It works fine on runbot
+10/23/25, 4:18 PM - +92 341 2454273: Ammar tested there. I think it was same there
+10/23/25, 4:18 PM - +92 341 2454273: Let us check again
+10/23/25, 4:19 PM - +92 341 2454273: If it does, then matching our odoo build to their build will be enough.
+10/23/25, 4:19 PM - +92 341 2454273: @⁨Ammar Ahmed Khan⁩  verify again. <This message was edited>
+10/23/25, 4:22 PM - +92 335 2892466: It is a longpolling issue probably
+10/23/25, 4:22 PM - +92 335 2892466: In the config file
+10/23/25, 4:22 PM - +92 335 2892466: You will have to configure that
+10/23/25, 4:23 PM - +92 341 2454273: Error occurs when url of a deleted document is visited
+10/23/25, 4:23 PM - +92 335 2892466: On Odoo.sh, it works fine as well
+10/23/25, 4:23 PM - +92 341 2454273: Not related to long pooling
+10/23/25, 4:49 PM - Ammar Ahmed Khan: @⁨~Asfand⁩ can we connect?
+10/23/25, 4:50 PM - Ammar Ahmed Khan: <Media omitted>
+10/23/25, 5:38 PM - Gocha: @⁨Ammar Ahmed Khan⁩, I know I mentioned just "leads" earlier, and the production endpoint is set only for leads while everything else still runs on staging, but that combination doesn’t make sense, does it?
+10/23/25, 5:41 PM - Ammar Ahmed Khan: sorry shared the wrong file, sharing the correct one in a minute
+10/23/25, 5:47 PM - Ammar Ahmed Khan: <Media omitted>
+10/23/25, 5:51 PM - Gocha: Thanks, Ammar
+10/23/25, 5:54 PM - +92 335 2892466: @⁨Ammar Ahmed Khan⁩ add a development, that shows the following:
+
+1. On the PO tree and form, there should be a field Total Billed Balance
+
+So lets say if the PO is 500
+
+There is a bill against it for 250 
+
+The total billed amount would be 250 
+
+Balance would be 250
+10/23/25, 5:56 PM - +92 335 2892466: Also, when we submit file from the API it doesn't fetch on the Odoo task
+10/23/25, 6:01 PM - +92 335 2892466: https://erp.zumasales.com/web?db=live&signup_email=jillian%40zumasales.com&token=5XVg7AouThzzsrleft5u#id=569566&cids=1&menu_id=348&action=203&active_id=569566&model=account.move&view_type=form
+10/23/25, 6:01 PM - +92 335 2892466: @⁨Ammar Ahmed Khan⁩ this issue is happening again
+10/23/25, 6:01 PM - Ammar Ahmed Khan: Let me check
+10/23/25, 6:08 PM - +92 335 2892466: nevermind
+10/23/25, 6:08 PM - +92 335 2892466: it worked now
+10/23/25, 6:09 PM - +92 335 2892466: @⁨Ammar Ahmed Khan⁩ @⁨~Usama Shahid⁩ can we meet about this notification thing?
+10/23/25, 6:18 PM - Ammar Ahmed Khan: Yes in 15 minutes doing lunch
+10/23/25, 6:19 PM - Asfand: Aby bhai dinner hota hai is time
+10/23/25, 6:20 PM - Ammar Ahmed Khan: Mjhe lunch krne ka time mila hai abhi😂
+10/23/25, 6:37 PM - Ammar Ahmed Khan: https://meet.google.com/hqw-pcyo-bac
+10/23/25, 6:42 PM - Asfand: Is Usama there
+10/23/25, 6:43 PM - Ammar Ahmed Khan: No, he is not in office.
+10/23/25, 7:17 PM - +92 341 2454273: Let me know if i am still needed on thus
+10/23/25, 7:17 PM - +92 341 2454273: This*
+10/23/25, 7:17 PM - +92 335 2892466: I think hamza is working on it
+10/23/25, 8:01 PM - +92 335 2892466: @⁨Ammar Ahmed Khan⁩ available?
+10/23/25, 8:02 PM - Ammar Ahmed Khan: Yes
+10/23/25, 8:03 PM - +92 335 2892466: yaar
+10/23/25, 8:03 PM - +92 335 2892466: task ID 8453
+10/23/25, 8:04 PM - +92 335 2892466: iss pe attachments fetch nae hoii
+10/23/25, 8:04 PM - +92 335 2892466: why
+10/23/25, 8:04 PM - Ammar Ahmed Khan: let me check
+10/23/25, 9:11 PM - Ammar Ahmed Khan: Please Find Day End Report 
+
+1- pipeline API live. Done on live
+2- AI pdf Partner name. Done on staging 
+3- Notification bug. In progress 
+4- Purchase billed and balance fields. In progress 
+5- API for field service task. In queue 
+6- Equipment delivery service task. In queue
+10/23/25, 9:14 PM - Gocha: As a reminder I need the live api with pagination implemented as well
+10/23/25, 9:35 PM - Ammar Ahmed Khan: Sure
+10/23/25, 10:10 PM - Gocha: @⁨Ammar Ahmed Khan⁩  for the Linear sync I need two extra fields on the tasks API: deadline/due_date (ISO-8601) and type/category (Bug/Feature/etc.). 
+
+And add pagination (limit/offset) and date filters (created_since, updated_since). 
+
+Also same schema as staging, but production read-only.
+10/24/25, 3:07 AM - Gocha: 
+10/24/25, 12:00 PM - Ammar Ahmed Khan: sure, let me take a look in it.
+10/24/25, 12:01 PM - Gocha: Thanks, @⁨Ammar Ahmed Khan⁩. Good timing, I was about to ask for confirmation if it has been added to task list
+10/24/25, 12:06 PM - Ammar Ahmed Khan: Is it priority for today? there are 4 priority tasks for today's. I will start it once any of them completed. Is it okay for you?
+10/24/25, 12:07 PM - Gocha: It's okay, this task can wait for Monday
+10/24/25, 12:07 PM - Gocha: The pagination I need today though
+10/24/25, 12:08 PM - Ammar Ahmed Khan: Yes that is started, I will share it today.
+10/24/25, 12:08 PM - Gocha: Great
+10/24/25, 12:18 PM - Ammar Ahmed Khan: Please Find Day Start Plan 
+
+1- Pagination for CRM lead API. In progress
+2- Notification bug. In progress 
+3- Purchase billed and balance fields. In progress 
+4- API for field service task. In queue 
+5- Equipment delivery service task. In queue
+10/24/25, 1:10 PM - Ammar Ahmed Khan: @⁨Gocha⁩ could you please test the pagination for pipeline on staging.
+10/24/25, 1:10 PM - Ammar Ahmed Khan: Than I will deploy it on live
+10/24/25, 1:11 PM - Gocha: Sure, send it to me
+10/24/25, 1:15 PM - Ammar Ahmed Khan: <Media omitted>
+10/24/25, 1:43 PM - Ammar Ahmed Khan: <Media omitted>
+10/24/25, 1:53 PM - Gocha: Yeah I'm doing comprehensive testing to make sure that implementation is properly compatible with our platform's features
+10/24/25, 2:56 PM - Ammar Ahmed Khan: @⁨~Asfand⁩ let me know if billed amount is greater than PO amount should we show the balance in negative? <This message was edited>
+10/24/25, 3:51 PM - Asfand: Yes
+10/24/25, 3:59 PM - Asfand: What is the update @⁨Ammar Ahmed Khan⁩ ?
+10/24/25, 4:05 PM - Ammar Ahmed Khan: 1- Notification bug.
+2- Purchase billed and balance fields. 
+These two tasks are in progress
+10/24/25, 4:05 PM - Asfand: What is the news on notification bug?
+10/24/25, 4:06 PM - Asfand: Did you show @⁨~Usama Shahid⁩ variant task?
+10/24/25, 4:06 PM - +92 341 2454273: Yes. I have seen it. I gave a solution of checkbox before. I think u rejected that before.
+10/24/25, 4:07 PM - +92 341 2454273: I am getting something explored for it again
+10/24/25, 4:09 PM - +92 341 2454273: When the button gets pressed, force save the document first from JS and then run the python action of variant in one call. 
+
+Problem is, button can either be for JS or python at one time, not both simultaneously. Trying to find a way to make it work on both. <This message was edited>
+10/24/25, 4:18 PM - Asfand: Try to see how the actual variant configurator works
+10/24/25, 4:18 PM - Asfand: It will works without save
+10/24/25, 4:18 PM - Asfand: Might be helpful
+10/24/25, 4:20 PM - Gocha: @⁨Ammar Ahmed Khan⁩, finished testing, new pipeline endpoints can be turned into production version, as soon as possible please
+
+That will be for mvp, after that I will send you list of modifications on pipeline which I will need for the v1 of the project
+10/24/25, 4:25 PM - Ammar Ahmed Khan: @⁨Asfand⁩ should we deploy this after working hour?
+10/24/25, 4:30 PM - Asfand: Yes
+10/24/25, 4:30 PM - Asfand: Probably monday before offixe
+10/24/25, 4:30 PM - Asfand: Office
+10/24/25, 4:31 PM - Ammar Ahmed Khan: sure
+10/24/25, 6:35 PM - Asfand: @⁨Ammar Ahmed Khan⁩ - I want to test the bill integration
+10/24/25, 6:35 PM - Asfand: do you want to meet?
+10/24/25, 6:36 PM - Ammar Ahmed Khan: In 30 minutes?
+10/24/25, 6:36 PM - Asfand: Okay
+10/24/25, 6:41 PM - Asfand: is the API fetch working
+10/24/25, 6:41 PM - Asfand: because when I test
+10/24/25, 6:42 PM - Asfand: it doesnt do anything
+10/24/25, 6:42 PM - Asfand: it just shows processingh
+10/24/25, 6:44 PM - Asfand: I want test it
+10/24/25, 6:44 PM - Ammar Ahmed Khan: can you send 2 3 ids from live? I will test it on postman
+10/24/25, 6:45 PM - Asfand: Is the staging one not working?
+10/24/25, 6:45 PM - Asfand: <Media omitted>
+10/24/25, 6:45 PM - Asfand: test th9is
+10/24/25, 6:45 PM - Asfand: this
+10/24/25, 6:47 PM - Asfand: API from my side is working fine
+10/24/25, 6:47 PM - Asfand: the sync is not working
+10/24/25, 6:47 PM - Ammar Ahmed Khan: Sorry I thought you were asking for the get inspection pdf
+10/24/25, 6:47 PM - Ammar Ahmed Khan: let me check this
+10/24/25, 7:06 PM - Asfand: What is the issue?
+10/24/25, 7:20 PM - Ammar Ahmed Khan: server action issue fixing it.
+10/24/25, 7:56 PM - Ammar Ahmed Khan: fixed
+10/24/25, 7:56 PM - Ammar Ahmed Khan: I am available.
+10/24/25, 8:24 PM - Asfand: send me a link
+10/24/25, 8:24 PM - Ammar Ahmed Khan: https://meet.google.com/nyo-rvre-xyi
+10/24/25, 9:59 PM - Asfand: @⁨Ammar Ahmed Khan⁩ create a task 
+
+When sales quote is attached with a opportunity, move it to quoted stage
+10/24/25, 9:59 PM - Asfand: make sure that it does conflict with our development for Won stage
+10/24/25, 10:00 PM - Asfand: when sales is confirmed it confirms everything
+10/24/25, 10:06 PM - Ammar Ahmed Khan: Noted
+10/24/25, 10:08 PM - Ammar Ahmed Khan: Please Find Day End Report 
+
+1- Pagination for CRM lead API. Done on staging 
+2- Notification bug. In progress 
+3- Purchase billed and balance fields. Done on staging 
+4- API for field service task. In progress 
+5- Equipment delivery service task. In queue
+10/27/25, 11:17 AM - Ammar Ahmed Khan: Please Find Day Start Plna 
+
+1- Notification bug. Done on staging, in testing phase 
+2- API for field service task. In progress 
+3- Purchase billed and balance status. in progress
+4- Pagination for CRM lead API. Will deploy on live
+5- Equipment delivery service task. In queue
+10/27/25, 12:05 PM - Ammar Ahmed Khan: Deployed on live
+10/27/25, 6:29 PM - Asfand: May I know What is the ETA on these?
+10/27/25, 6:31 PM - Ammar Ahmed Khan: 1 is in testing will connect you after my testing.
+2 and 3 will be completed today.
+10/27/25, 6:32 PM - Ammar Ahmed Khan: also CRM automation is in progress.
+10/27/25, 7:24 PM - Asfand: Is the notification thing fixed?
+10/27/25, 9:07 PM - Ammar Ahmed Khan: can we connect? @⁨Asfand⁩
+10/27/25, 9:54 PM - Ammar Ahmed Khan: Please Find Day End Report
+
+1- Notification bug. Done on staging.
+2- API for field service task. Done on staging
+3- Purchase billed and balance status. Done on staging
+4- CRM automation. Done on staging
+5- Pagination for CRM lead API. Deployed on live
+6- Equipment delivery service task. Will start tomorrow
+10/28/25, 12:11 PM - Ammar Ahmed Khan: Please Find Day Start Plan
+
+1- Notification bug. Deploy on live
+2- CRM automation. Deploy on live.
+3- Equipment delivery service task. In progress
+4- PO Ribbons for bill status. In progress
+10/28/25, 3:32 PM - Asfand: Notification thing is not working
+10/28/25, 3:37 PM - Asfand: @⁨Ammar Ahmed Khan⁩ - when adding a note on a PO line, it throws an error
+10/28/25, 3:37 PM - Asfand: Doesn’t let you
+10/28/25, 3:37 PM - Ammar Ahmed Khan: let me check
+10/28/25, 3:39 PM - Asfand: It is the PO deployment, please revert it
+10/28/25, 3:40 PM - Asfand: It is probably trying to compute all lines
+10/28/25, 3:41 PM - Asfand: Anyway, I want this fixed
+10/28/25, 3:41 PM - Asfand: This is just poor development, very mediocre. @⁨~Usama Shahid⁩
+10/28/25, 4:15 PM - Asfand: @⁨Ammar Ahmed Khan⁩ is it fixed?
+10/28/25, 4:15 PM - Ammar Ahmed Khan: yes reverted.
+10/28/25, 4:16 PM - Ammar Ahmed Khan: can we connect for notification?
+10/28/25, 4:21 PM - Gocha: @⁨Ammar Ahmed Khan⁩, I need the team to prepare a complete technical report on this deployment.
+
+I want to see exact logic they followed, where and how they tested it, and what led them to believe it was ready to deploy.
+
+This isn’t optional, I expect a detailed, structured breakdown, not a few vague lines. 
+
+If something is being deployed and breaks basic functionality, I want to know precisely how that conclusion was reached and why no one caught it earlier.
+10/28/25, 4:25 PM - Asfand: Yes, please submit these correction of error report by tomorrow
+10/28/25, 4:28 PM - Ammar Ahmed Khan: sure, let me prepare it.
+10/28/25, 6:27 PM - +92 341 2454273: I have reviewed the development and testing scenarios as well. Will discuss with you what happened here.
+10/28/25, 8:10 PM - Asfand: https://erp.zumasales.com/web?debug=1#id=574041&cids=1&menu_id=123&action=199&model=account.move&view_type=form
+10/28/25, 8:10 PM - Asfand: @⁨Ammar Ahmed Khan⁩ these haulottee credit notes are not coming through
+10/28/25, 8:10 PM - Asfand: proper
+10/28/25, 8:10 PM - Asfand: can we get this fixed urgently
+10/28/25, 8:11 PM - Ammar Ahmed Khan: checking
+10/28/25, 9:02 PM - Asfand: Shop supplies wali development hogyi?
+10/28/25, 9:05 PM - Ammar Ahmed Khan: No we have tried to fetch it from PO but that not works. I will discuss this with Usama bhai tomorrow for the solution.
+10/28/25, 9:06 PM - Asfand: Okay
+10/28/25, 9:28 PM - Ammar Ahmed Khan: Can you check this on live by creating new Job of same credit note?
+10/28/25, 9:28 PM - Asfand: Okay
+10/28/25, 9:57 PM - Asfand: <Media omitted>
+10/28/25, 9:57 PM - Asfand: it looks so bad
+10/28/25, 9:59 PM - Ammar Ahmed Khan: I will get it fix
+10/28/25, 10:08 PM - Ammar Ahmed Khan: Please Find Day End Report
+
+1- CRM automation. Deployed on live.
+2- Equipment delivery service task. done on staging, in testing phase
+3- PO bill status. Fixed on staging
+4- PO Ribbons for bill status. In progress
+5- Haulotte AI credit note. Fixed on staging. Testing require on Live.
+10/28/25, 10:21 PM - Gocha: Usama, regardless of that discussion, the full technical report still needs to be delivered.
+
+This isn’t a preference, it’s a required part of the review under our predefined KPI rules.
+
+Make sure it is completed and shared once done.
+10/29/25, 7:57 AM - +92 341 2454273: @⁨Gocha⁩  i did not deny that part, team will submit it, Asfand and i will have a management level call.
+10/29/25, 1:05 PM - Ammar Ahmed Khan: Please Find Day Start Plan
+
+1- Equipment delivery service task. Gaps in progress
+2- PO Ribbons for bill status. done on staging
+3- Error report. In progress
+4- ODL support tasks log fix. In progress
+10/29/25, 3:11 PM - Asfand: https://erp.zumasales.com/web?debug=1#id=21673&cids=1-2&action=3140&model=ringcentral.call.log&view_type=form&menu_id=1658
+10/29/25, 3:11 PM - Asfand: @⁨Ammar Ahmed Khan⁩
+10/29/25, 3:11 PM - Asfand: Select both companies
+10/29/25, 3:11 PM - Asfand: And try to create an opportunity
+10/29/25, 3:11 PM - Asfand: By clicking create opportunity button
+10/29/25, 3:11 PM - Asfand: Doesn’t work
+10/29/25, 3:12 PM - Asfand: Same error that we had long time ago
+10/29/25, 3:13 PM - Ammar Ahmed Khan: checking
+10/29/25, 4:24 PM - Ammar Ahmed Khan: <Media omitted>
+10/29/25, 4:25 PM - Gocha: Thank you
+10/29/25, 6:40 PM - Asfand: did this ring central issue got fixed?
+10/29/25, 6:41 PM - Ammar Ahmed Khan: in progress
+10/29/25, 7:15 PM - Ammar Ahmed Khan: @⁨Asfand⁩ available to connect?
+10/29/25, 7:15 PM - Asfand: for?
+10/29/25, 7:15 PM - Ammar Ahmed Khan: ringcentral and equipment delivery task
+10/29/25, 7:36 PM - Asfand: I have to leave at 11:45
+10/29/25, 7:37 PM - Asfand: Is the issue fixed?
+10/29/25, 7:43 PM - Ammar Ahmed Khan: It is giving the default validation error that the customer is from Zuma lift and we are creating opportunity in Zuma sales, if we select the Zuma lift in main from top than opportunity is creating.
+10/29/25, 9:25 PM - Ammar Ahmed Khan: Please Find Day End Report
+
+1- Equipment delivery service task. done on staging
+2- PO Ribbons for bill status. done on staging
+3- Error report. done 
+4- ODL support tasks log fix. In progress
+10/29/25, 10:48 PM - Asfand: its not working even when both are selected
+10/30/25, 12:11 PM - Ammar Ahmed Khan: Please Find Day Start Plan
+
+1- Ringcentral create opportunity. In progress
+2- ODL support tasks log fix. In progress
+3- PO bill amount changes. In queue
+10/30/25, 7:15 PM - Asfand: @⁨Ammar Ahmed Khan⁩ what is the update?
+10/30/25, 7:16 PM - Asfand: on the PO bill system
+10/30/25, 7:19 PM - Ammar Ahmed Khan: in progress, will be completed shortly.
+10/30/25, 9:36 PM - Ammar Ahmed Khan: Please Find Day End Report
+
+1- Ringcentral create opportunity error. Done on live
+2- ODL support tasks log fix. Done on live
+3- PO bill amount changes. Done on staging in testing
+4- Shop supplies for new AI bill. Applied new approach on staging currently testing.
+10/31/25, 3:15 PM - Ammar Ahmed Khan: Hey @⁨Asfand⁩,
+Let me know when can we connect, I have to show you the PO bill status and also the approach we have used for the shop supplies for New AI bills. Also need to discuss about Aftermarket variant.
+10/31/25, 3:16 PM - Asfand: Okay
+10/31/25, 3:16 PM - Asfand: Lets do 8:30
+10/31/25, 3:16 PM - Ammar Ahmed Khan: sure.
+10/31/25, 4:31 PM - Asfand: link please
+10/31/25, 4:32 PM - Ammar Ahmed Khan: https://meet.google.com/pmr-vine-mqr
+10/31/25, 4:38 PM - Asfand: joining in two
+10/31/25, 4:57 PM - Asfand: On a call
+10/31/25, 4:57 PM - Asfand: will message when done
+11/3/25, 12:01 PM - Ammar Ahmed Khan: Please find Day Start Plan
+
+1- After market variant. In progress.
+2- PO bill status, Vendor return and Force Closed. In progress 
+3- New AI bills, will deploy the current development on live.
+11/3/25, 12:29 PM - Asfand: Make sure it is administrative access only
+11/3/25, 5:20 PM - Asfand: @⁨Ammar Ahmed Khan⁩ is Hamza Naveed Available?
+11/3/25, 5:21 PM - Ammar Ahmed Khan: Let me check
+11/3/25, 6:08 PM - Asfand: @⁨Ammar Ahmed Khan⁩ - what do we need to do with the live API
+11/3/25, 6:15 PM - Ammar Ahmed Khan: sharing an API endpoint you need to map on your vercel app. <This message was edited>
+11/3/25, 6:32 PM - Ammar Ahmed Khan: Hamza is available
+11/3/25, 7:13 PM - Ammar Ahmed Khan: <Media omitted>
+11/3/25, 8:04 PM - +92 335 2892466: @⁨Ammar Ahmed Khan⁩ what is the update on the ringcentral bug?
+11/3/25, 9:04 PM - Asfand: ??
+11/3/25, 9:54 PM - Asfand: @⁨~Usama Shahid⁩ is anyone there?
+11/3/25, 10:04 PM - +92 341 2454273: sed lik
+11/3/25, 10:05 PM - Asfand: https://meet.google.com/mbc-aquj-ivr
+11/3/25, 10:17 PM - Asfand: https://vimeo.com/1133268386/bf41f0c689
+11/3/25, 10:17 PM - Asfand: @⁨~Usama Shahid⁩ - look at this
+11/3/25, 10:19 PM - +92 341 2454273: ok
+11/3/25, 10:35 PM - +92 341 2454273: msla smj gaya mei,  conflict comes from sales team field value. that value has multiple cases. 
+
+sales person selected ho to saleperson ki team select hoti auto. sale person na ho to active selected company ki default team auto select hoti. Or ye sales team contact k piche lgi v company se conflict krti to error atta, conflict na kre to error nhi atta, bn jati oppurtunity. <This message was edited>
+11/3/25, 10:36 PM - Asfand: Yes
+11/3/25, 10:36 PM - Asfand: Probably
+11/3/25, 10:36 PM - Asfand: How can we fix this now
+11/3/25, 10:36 PM - +92 341 2454273: jo hm soch re the oppurtunity pr company carry forward nhi ho ri, thats not true, ho ri carry.
+11/3/25, 10:36 PM - +92 341 2454273: sochra hon us pr hi.
+11/3/25, 10:36 PM - Asfand: Okay
+11/3/25, 10:36 PM - Asfand: Let me know
+11/3/25, 10:42 PM - +92 341 2454273: why don't we allow sales team selection as well on ringcentral call. that way, this conflict can be addressed
+11/3/25, 10:42 PM - +92 341 2454273: probably <This message was edited>
+11/3/25, 10:42 PM - Asfand: it is a good idea
+11/3/25, 10:43 PM - +92 341 2454273: chlo me staging pr kr k dekhta pehle.
+11/3/25, 10:43 PM - Asfand: okay
+11/3/25, 10:58 PM - +92 341 2454273: i tested on 2 records, giving team manually is fixing the issue for now.
+11/3/25, 10:58 PM - +92 341 2454273: pushing field on live.
+11/3/25, 10:59 PM - +92 341 2454273: let me know if it is fine. shouldn't take more then a few sec time
+11/3/25, 10:59 PM - Asfand: Can it automatically pick it up?
+11/3/25, 10:59 PM - Asfand: Based on the company
+11/3/25, 10:59 PM - Asfand: Like whoever is the user
+11/3/25, 10:59 PM - +92 341 2454273: which company? contacts company or the currently active company?
+11/3/25, 11:00 PM - Asfand: Like if it has an active company
+11/3/25, 11:00 PM - Asfand: It should just pick up the sales team according to the user
+11/3/25, 11:00 PM - Asfand: Whatever it could pick up on CRM
+11/3/25, 11:01 PM - +92 341 2454273: ok. let me see. like, currently which ever user saves the record, it auto picks that user as sales person, same thing we will do for team. let me see whats the best way for taht
+11/3/25, 11:01 PM - Asfand: Yes
+11/3/25, 11:02 PM - Asfand: Or we can pre define
+11/3/25, 11:02 PM - Asfand: Whatever works
+11/3/25, 11:06 PM - +92 341 2454273: I think making a default sales team on company level would be the most straight forward way. crm uses some complex logic for sales team selection,
+11/3/25, 11:06 PM - Asfand: Okay, do we need to add that somewhere
+11/3/25, 11:07 PM - +92 341 2454273: yes, as of now, there is no field for default sales tema.
+11/3/25, 11:42 PM - +92 341 2454273: company level mei field bnani hai, or us ki waja se down time ae ga lazmi, foran up nhi hoga. 
+
+field bnne me b msle kr rahi filhal to for some reason. is ko tmhari morning se pehle develop krwa k push krwa don ga. phr jb utho ge to 10 mnt connect ho k ek bar check kr len ge sth.
+11/3/25, 11:43 PM - Asfand: Subah kardo push
+11/3/25, 11:43 PM - +92 341 2454273: ok.
+11/3/25, 11:43 PM - Asfand: Thanks for working on this
+11/3/25, 11:44 PM - +92 341 2454273: No worries bro
+11/4/25, 1:58 AM - Asfand: @⁨Saifullah Shaikh⁩ - please provide endpoint for sales order data. 
+
+Order date 
+Sales Person 
+Sales Team 
+Status 
+Company (internal; zuma sales llc, zuma lift service)
+11/4/25, 10:16 AM - Saifullah Shaikh: Okay, we’ll start working on developing the endpoint.
+11/4/25, 12:33 PM - Asfand: @⁨~Usama Shahid⁩ - is this completed?
+11/4/25, 12:54 PM - +92 341 2454273: completed on staging, putting on live. then will test and finalize
+11/4/25, 1:04 PM - +92 341 2454273: pushed on live. when can you join me for 10 mnts?
+11/4/25, 3:18 PM - Ammar Ahmed Khan: do we need order lines in API response?
+11/4/25, 3:19 PM - Asfand: In an hour
+11/4/25, 3:22 PM - Asfand: Abi available?
+11/4/25, 3:22 PM - Asfand: No
+11/4/25, 3:23 PM - +92 341 2454273: Ajao
+11/4/25, 3:24 PM - Asfand: https://meet.google.com/yiw-yzfi-uzq
+11/4/25, 3:38 PM - +92 341 2454273: @⁨Ammar Ahmed Khan⁩  "create contact" on ringcentral not carrying forward company ID to contact. <This message was edited>
+11/4/25, 3:38 PM - +92 341 2454273: fix on urgent Bases.
+11/4/25, 3:41 PM - Ammar Ahmed Khan: We had made an automation on this when creating a contact from RC company will not assign, it will assign after an opportunity created. The company on opportunity will assign on the contact.
+11/4/25, 3:46 PM - Asfand: Its not assigning anything when you create an opportunity. Its not even letting you create an opportunity
+11/4/25, 3:46 PM - Asfand: And if a customer already in the system, its not letting you go forward
+11/4/25, 3:47 PM - Asfand: What was the last code you guys push?
+11/4/25, 3:48 PM - +92 341 2454273: Yes, development is wrong. If we don’t carry forward company, it would not allow to create opportunity, 
+
+While the development relied on putting company after opportunity being created.
+11/4/25, 3:49 PM - Asfand: @⁨Ammar Ahmed Khan⁩ - The last changes you guys pushed
+11/4/25, 3:49 PM - Asfand: Is that the issue?
+11/4/25, 3:49 PM - Asfand: I need this running somehow for now
+11/4/25, 3:50 PM - Asfand: Without this sales people cant take proper calls
+11/4/25, 3:50 PM - Asfand: So whatever needs to happen for now
+11/4/25, 3:50 PM - Asfand: Should be good
+11/4/25, 3:51 PM - Asfand: We can deploy a proper fix tomorrow
+11/4/25, 3:57 PM - Asfand: What is the plan? @amm
+11/4/25, 3:57 PM - Asfand: @⁨Ammar Ahmed Khan⁩
+11/4/25, 3:57 PM - +92 341 2454273: Checking old code. Wait
+11/4/25, 4:00 PM - Asfand: Also, can we remove the code which causes dual activities? Don’t create an activity when opportunity is created
+11/4/25, 4:05 PM - +92 341 2454273: We have checked the recent code. Last thing was done 2 weeks ago. 
+
+Previously, opportunity was getting current company id, and contacts don’t have any company tagged on them(bug since start). that was causing the error.  As a fix, developer picked company from contact instead. 
+
+
+Permanent fix is to get company over contact.. needs to be done.
+11/4/25, 4:07 PM - Asfand: Are you guys going to fix it?
+11/4/25, 4:08 PM - Asfand: Can we revert back to whatever it was because it was working okayish
+11/4/25, 4:43 PM - Ammar Ahmed Khan: <Media omitted>
+11/4/25, 4:50 PM - Asfand: Is it from the message screen or the general screen?
+11/4/25, 4:50 PM - +92 341 2454273: @⁨Asfand⁩ take a message ka scenario phas ra hai. 
+
+
+You have a contact in zuma sales, 
+
+You are standing in zuma sales or zuma lift(doesn’t matter in this case) , 
+
+During take a message you select zuma lift. It will give error, contact of zuma sales cannot have opportunity in lift.
+11/4/25, 4:51 PM - Asfand: Which is fine, unless we can just trigger a record in the other company
+11/4/25, 4:51 PM - Asfand: Somehow
+11/4/25, 4:51 PM - Asfand: If all other scenarios are working, lets push them
+11/4/25, 4:52 PM - +92 341 2454273: Its not a trigger issue, trigger can be done, 
+
+But in this case, we are making sales opportunity for lift customer. Its record conflict not access issue.
+11/4/25, 4:53 PM - Asfand: Yeah, I mean if it a different company the record should be made regardless of where you are
+11/4/25, 4:54 PM - Asfand: User can see it in the log note
+11/4/25, 4:55 PM - +92 341 2454273: Ye cheez nhi smja. VN kr do
+11/4/25, 4:58 PM - +92 341 2454273: Lets leave this scenario and fix rest. Then once others are fixed, we will focus on this
+11/4/25, 5:22 PM - Asfand: Okay
+11/4/25, 5:22 PM - Asfand: Can we push this
+11/4/25, 5:25 PM - Ammar Ahmed Khan: testing on staging currently.
+11/4/25, 7:12 PM - Asfand: what is the update?
+11/4/25, 7:16 PM - Ammar Ahmed Khan: available to connect?
+11/4/25, 7:18 PM - Asfand: Yes
+11/4/25, 7:19 PM - Ammar Ahmed Khan: https://meet.google.com/zaf-ajga-htf
+11/4/25, 7:36 PM - Ammar Ahmed Khan: can you join again for 5 minutes.
+11/4/25, 8:30 PM - Ammar Ahmed Khan: deployed on live
+11/4/25, 8:30 PM - Asfand: psycopg2.OperationalError: connection to server at "pgbouncer" (172.18.0.5), port 5432 failed: FATAL:  no more connections allowed (max_client_conn)
+11/4/25, 8:30 PM - Ammar Ahmed Khan: refresh
+11/4/25, 8:31 PM - Asfand: its not going away
+11/4/25, 8:31 PM - Asfand: please restart service
+11/4/25, 8:32 PM - Asfand: Thankls
+11/4/25, 8:32 PM - Ammar Ahmed Khan: done
+11/4/25, 8:47 PM - Asfand: RPC_ERROR
+Odoo Server Error
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/odoo/tools/safe_eval.py", line 399, in safe_eval
+    return unsafe_eval(c, globals_dict, locals_dict)
+  File "ir.actions.server(2638,)", line 1, in <module>
+  File "/mnt/extra-addons/ol_ai_bills/models/ext.py", line 725, in crone_process
+    records.process()
+  File "/mnt/extra-addons/ol_ai_bills/models/ext.py", line 760, in process
+    if res.get('Customer'):
+AttributeError: 'NoneType' object has no attribute 'get'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/odoo/http.py", line 1787, in _serve_db
+    return service_model.retrying(self._serve_ir_http, self.env)
+  File "/usr/lib/python3/dist-packages/odoo/service/model.py", line 133, in retrying
+    result = func()
+  File "/usr/lib/python3/dist-packages/odoo/http.py", line 1815, in _serve_ir_http
+    response = self.dispatcher.dispatch(rule.endpoint, args)
+  File "/usr/lib/python3/dist-packages/odoo/http.py", line 2019, in dispatch
+    result = self.request.registry['ir.http']._dispatch(endpoint)
+  File "/usr/lib/python3/dist-packages/odoo/addons/website/models/ir_http.py", line 235, in _dispatch
+    response = super()._dispatch(endpoint)
+  File "/usr/lib/python3/dist-packages/odoo/addons/base/models/ir_http.py", line 221, in _dispatch
+    result = endpoint(**request.params)
+  File "/usr/lib/python3/dist-packages/odoo/http.py", line 757, in route_wrapper
+    result = endpoint(self, *args, **params_ok)
+  File "/usr/lib/python3/dist-packages/odoo/addons/web/controllers/dataset.py", line 28, in call_button
+    action = self._call_kw(model, method, args, kwargs)
+  File "/mnt/extra-addons/printnode_base/controllers/main.py", line 50, in _call_kw
+    return super(DataSetProxy, self)._call_kw(model, method, args, kwargs)
+  File "/usr/lib/python3/dist-packages/odoo/addons/web/controllers/dataset.py", line 20, in _call_kw
+    return call_kw(request.env[model], method, args, kwargs)
+  File "/usr/lib/python3/dist-packages/odoo/api.py", line 468, in call_kw
+    result = _call_kw_multi(method, model, args, kwargs)
+  File "/usr/lib/python3/dist-packages/odoo/api.py", line 453, in _call_kw_multi
+    result = method(recs, *args, **kwargs)
+  File "/usr/lib/python3/dist-packages/odoo/addons/base/models/ir_cron.py", line 107, in method_direct_trigger
+    cron.with_user(cron.user_id).with_context({'lastcall': cron.lastcall}).ir_actions_server_id.run()
+  File "/usr/lib/python3/dist-packages/odoo/addons/base/models/ir_actions.py", line 943, in run
+    res = runner(run_self, eval_context=eval_context)
+  File "/usr/lib/python3/dist-packages/odoo/addons/website/models/ir_actions_server.py", line 61, in _run_action_code_multi
+    res = super(ServerAction, self)._run_action_code_multi(eval_context)
+  File "/usr/lib/python3/dist-packages/odoo/addons/base/models/ir_actions.py", line 775, in _run_action_code_multi
+    safe_eval(self.code.strip(), eval_context, mode="exec", nocopy=True, filename=str(self))  # nocopy allows to return 'action'
+  File "/usr/lib/python3/dist-packages/odoo/tools/safe_eval.py", line 413, in safe_eval
+    raise ValueError('%s: "%s" while evaluating\n%r' % (ustr(type(e)), ustr(e), expr))
+ValueError: <class 'AttributeError'>: "'NoneType' object has no attribute 'get'" while evaluating
+'model.crone_process(limit=20)'
+
+The above server error caused the following client error:
+RPC_ERROR: Odoo Server Error
+    RPC_ERROR
+        at makeErrorFromResponse (https://erp.zumasales.com/web/assets/1/986e453/web.assets_web.min.js:2928:163)
+        at XMLHttpRequest.<anonymous> (https://erp.zumasales.com/web/assets/1/986e453/web.assets_web.min.js:2932:13)
+11/4/25, 8:47 PM - Asfand: Ai bills have this issue
+11/4/25, 8:47 PM - Asfand: Urgent Tickety
+11/4/25, 9:09 PM - Asfand: @⁨Ammar Ahmed Khan⁩ hua issue sahe?
+11/4/25, 9:10 PM - Ammar Ahmed Khan: in progress
+11/4/25, 9:17 PM - Ammar Ahmed Khan: https://erp.zumasales.com/web?debug=1#id=5852&cids=1&menu_id=1412&action=3115&model=ol.ai_bill_job&view_type=form
+11/4/25, 9:17 PM - Ammar Ahmed Khan: could you please confirm is this regular bill?
+11/4/25, 9:19 PM - Ammar Ahmed Khan: @⁨Asfand⁩ need to restart the service. Can we do?
+11/4/25, 9:19 PM - Asfand: No this is just a statement
+11/4/25, 9:20 PM - Asfand: System can skip it
+11/4/25, 9:20 PM - Asfand: You can restart unless its not going to take very long
+11/4/25, 9:20 PM - Ammar Ahmed Khan: okay.
+11/4/25, 9:34 PM - Ammar Ahmed Khan: fixed
+11/4/25, 9:37 PM - Asfand: Hogya?
+11/4/25, 9:37 PM - Ammar Ahmed Khan: yes
+11/4/25, 9:37 PM - Asfand: Scheduler chalao
+11/4/25, 9:37 PM - Ammar Ahmed Khan: chladya
+11/4/25, 9:37 PM - Asfand: And dekho agar bills aue
+11/4/25, 9:37 PM - Asfand: Thanks
+11/4/25, 11:38 PM - Asfand: @⁨~Usama Shahid⁩ Sent you a module on email
+11/4/25, 11:38 PM - Asfand: can you get that deployed for me to test
+11/5/25, 6:44 AM - +92 341 2454273: Okay, will check
+11/5/25, 3:47 PM - Ammar Ahmed Khan: <Media omitted>
+11/5/25, 3:47 PM - Asfand: @⁨Gocha⁩
+11/5/25, 3:48 PM - Gocha: Thanks, I'll review it and let you know if something
+11/5/25, 3:50 PM - Gocha: @⁨Ammar Ahmed Khan⁩ while we are at it, please default to live version of apis if the endpoints are read-only
+11/5/25, 3:54 PM - Asfand: @⁨Gocha⁩ - have you updated the API for bills?
+11/5/25, 3:54 PM - Asfand: To the live instance?
+11/5/25, 3:55 PM - Gocha: Not yet
+11/5/25, 3:58 PM - Asfand: I think you should put it in the list for today
+11/5/25, 3:58 PM - Asfand: They have already pushed the app
+11/5/25, 4:00 PM - Gocha: That's great, will update soon
+11/5/25, 4:21 PM - Asfand: @⁨Ammar Ahmed Khan⁩ bills and PO
+11/5/25, 4:22 PM - Ammar Ahmed Khan: lets connect in 1 hour. I will demonstrate you.
+11/5/25, 5:05 PM - Asfand: @⁨Ammar Ahmed Khan⁩ @⁨~Usama Shahid⁩ did you guys add the pin module on staging
+11/5/25, 5:20 PM - Ammar Ahmed Khan: Let me check with Usama bhai.
+11/5/25, 5:20 PM - Ammar Ahmed Khan: @⁨Asfand⁩  Available to connect?
+11/5/25, 5:22 PM - Asfand: Yes
+11/5/25, 5:23 PM - Ammar Ahmed Khan: https://meet.google.com/idz-vgzg-vuw
+11/5/25, 5:41 PM - Ammar Ahmed Khan: @⁨Asfand⁩
+11/5/25, 5:41 PM - Asfand: joining
+11/5/25, 6:05 PM - Ammar Ahmed Khan: @⁨Asfand⁩ there is no module in the email only the xml file and pdf.
+11/5/25, 6:53 PM - Asfand: <Media omitted>
+11/5/25, 6:53 PM - Asfand: yeh lo
+11/5/25, 6:53 PM - Asfand: <Media omitted>
+11/5/25, 6:53 PM - Asfand: put this one as well
+11/5/25, 6:54 PM - Asfand: Another ticket
+11/5/25, 6:54 PM - Asfand: The medium campaign and source is not carrying forward to sales
+11/5/25, 6:54 PM - Asfand: Module
+11/5/25, 7:21 PM - Ammar Ahmed Khan: From opportunity?
+11/5/25, 7:21 PM - Asfand: Yes
+11/5/25, 7:21 PM - Ammar Ahmed Khan: Checking
+11/5/25, 7:23 PM - Asfand: @⁨~Usama Shahid⁩ is there a way to know which incoming mailing server created the record?
+11/5/25, 7:24 PM - Asfand: @⁨Ammar Ahmed Khan⁩
+11/5/25, 7:30 PM - Ammar Ahmed Khan: which record
+11/5/25, 7:37 PM - Asfand: like when a lead is created from a incoming mailing server
+11/5/25, 7:37 PM - Asfand: can we have a log for that
+11/5/25, 7:51 PM - Ammar Ahmed Khan: I will check and let you know
+11/5/25, 7:51 PM - Asfand: Yes, very important
+11/6/25, 1:44 PM - Ammar Ahmed Khan: Day start plan
+
+1- PO bill status deployed on live
+2- After market variant. In progress
+3- Medium, campaign and source in SO. In progress
+4- PO Credit amount and balance. In queue.
+11/6/25, 5:55 PM - Ammar Ahmed Khan: This app is given .JS error could you please ask the provider to sent the updated version.
+11/6/25, 5:55 PM - Ammar Ahmed Khan: This one is installed on staging
+11/6/25, 7:46 PM - +92 335 2892466: what is the status of tasks?
+11/6/25, 7:48 PM - Asfand: Can we restart service
+11/6/25, 7:48 PM - Asfand: I am getting errors everywhere
+11/6/25, 7:48 PM - Ammar Ahmed Khan: Medium, campaign and source task done on staging
+11/6/25, 7:49 PM - Asfand: RPC_ERROR
+Odoo Server Error
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/odoo/models.py", line 5887, in ensure_one
+    _id, = self._ids
+ValueError: too many values to unpack (expected 1)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/odoo/http.py", line 1787, in _serve_db
+    return service_model.retrying(self._serve_ir_http, self.env)
+  File "/usr/lib/python3/dist-packages/odoo/service/model.py", line 133, in retrying
+    result = func()
+  File "/usr/lib/python3/dist-packages/odoo/http.py", line 1815, in _serve_ir_http
+    response = self.dispatcher.dispatch(rule.endpoint, args)
+  File "/usr/lib/python3/dist-packages/odoo/http.py", line 2019, in dispatch
+    result = self.request.registry['ir.http']._dispatch(endpoint)
+  File "/usr/lib/python3/dist-packages/odoo/addons/website/models/ir_http.py", line 235, in _dispatch
+    response = super()._dispatch(endpoint)
+  File "/usr/lib/python3/dist-packages/odoo/addons/base/models/ir_http.py", line 221, in _dispatch
+    result = endpoint(**request.params)
+  File "/usr/lib/python3/dist-packages/odoo/http.py", line 757, in route_wrapper
+    result = endpoint(self, *args, **params_ok)
+  File "/usr/lib/python3/dist-packages/odoo/addons/web/controllers/dataset.py", line 24, in call_kw
+    return self._call_kw(model, method, args, kwargs)
+  File "/mnt/extra-addons/printnode_base/controllers/main.py", line 50, in _call_kw
+    return super(DataSetProxy, self)._call_kw(model, method, args, kwargs)
+  File "/usr/lib/python3/dist-packages/odoo/addons/web/controllers/dataset.py", line 20, in _call_kw
+    return call_kw(request.env[model], method, args, kwargs)
+  File "/usr/lib/python3/dist-packages/odoo/api.py", line 468, in call_kw
+    result = _call_kw_multi(method, model, args, kwargs)
+  File "/usr/lib/python3/dist-packages/odoo/api.py", line 453, in _call_kw_multi
+    result = method(recs, *args, **kwargs)
+  File "/usr/lib/python3/dist-packages/odoo/addons/web/models/models.py", line 165, in web_read
+    for vals in co_records.web_read(field_spec['fields'])
+  File "/usr/lib/python3/dist-packages/odoo/addons/web/models/models.py", line 86, in web_read
+    values_list: List[Dict] = self.read(fields_to_read, load=None)
+  File "/usr/lib/python3/dist-packages/odoo/models.py", line 3576, in read
+    return self._read_format(fnames=fields, load=load)
+  File "/usr/lib/python3/dist-packages/odoo/models.py", line 3789, in _read_format
+    vals[name] = convert(record[name], record, use_display_name)
+  File "/usr/lib/python3/dist-packages/odoo/models.py", line 6669, in __getitem__
+    return self._fields[key].__get__(self, self.env.registry[self._name])
+  File "/usr/lib/python3/dist-packages/odoo/fields.py", line 1207, in __get__
+    self.compute_value(recs)
+  File "/usr/lib/python3/dist-packages/odoo/fields.py", line 1389, in compute_value
+    records._compute_field_value(self)
+  File "/usr/lib/python3/dist-packages/odoo/addons/base_automation/models/base_automation.py", line 784, in _compute_field_value
+    return _compute_field_value.origin(self, field)
+  File "/usr/lib/python3/dist-packages/odoo/models.py", line 4913, in _compute_field_value
+    fields.determine(field.compute, self)
+  File "/usr/lib/python3/dist-packages/odoo/fields.py", line 102, in determine
+    return needle(*args)
+  File "/mnt/extra-addons/ol_purchase_customization/models/purchase.py", line 138, in compute_returned_quantity
+    if receipt and receipt.return_count > 0:
+  File "/usr/lib/python3/dist-packages/odoo/fields.py", line 1148, in __get__
+    record.ensure_one()
+  File "/usr/lib/python3/dist-packages/odoo/models.py", line 5890, in ensure_one
+    raise ValueError("Expected singleton: %s" % self)
+ValueError: Expected singleton: stock.picking(17569, 16675, 16509, 16155, 15944, 19220, 21937, 20772, 19570, 21151)
+
+The above server error caused the following client error:
+RPC_ERROR: Odoo Server Error
+    RPC_ERROR
+        at makeErrorFromResponse (https://erp.zumasales.com/web/assets/1/986e453/web.assets_web.min.js:2928:163)
+        at XMLHttpRequest.<anonymous> (https://erp.zumasales.com/web/assets/1/986e453/web.assets_web.min.js:2932:13)
+11/6/25, 7:49 PM - Asfand: This error as well
+11/6/25, 7:49 PM - Ammar Ahmed Khan: on which operation?
+11/6/25, 7:49 PM - Ammar Ahmed Khan: doing
+11/6/25, 7:50 PM - Asfand: Deliveries
+11/6/25, 7:50 PM - Asfand: POs
+11/6/25, 7:50 PM - Asfand: Etc
+11/6/25, 8:00 PM - Asfand: UncaughtPromiseError > OwlError
+Uncaught Promise > An error occured in the owl lifecycle (see this Error's "cause" property)
+OwlError: An error occured in the owl lifecycle (see this Error's "cause" property)
+    Error: An error occured in the owl lifecycle (see this Error's "cause" property)
+        at handleError (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:925:101)
+        at App.handleError (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:1576:29)
+        at ComponentNode.initiateRender (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:1017:19)
+
+Caused by: Error: "purchase.order"."bill_status" field is undefined.
+    at Field.parseFieldNode (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:7751:231)
+    at https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:8639:865
+    at visit (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:4285:51)
+    at visitChildren (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:4284:171)
+    at visit (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:4285:129)
+    at visitChildren (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:4284:171)
+    at visit (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:4285:129)
+    at visitChildren (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:4284:171)
+    at visit (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:4285:129)
+    at visitChildren (https://erp.zumasales.com/web/assets/986e453/web.assets_web.min.js:4284:171)
+11/6/25, 8:00 PM - Asfand: Still this error
+11/6/25, 8:01 PM - Asfand: Do I need to update the purchase module?
+11/6/25, 8:01 PM - Ammar Ahmed Khan: chec k now
+11/6/25, 10:06 PM - Asfand: Did you guys remove the module?
+11/6/25, 10:07 PM - Asfand: for PO bills?
+11/6/25, 10:46 PM - Asfand: @⁨Ammar Ahmed Khan⁩ - for ringcentral, when guys click create opportunity, it should take them directly to the record
+11/6/25, 11:37 PM - Asfand: @⁨~Usama Shahid⁩ - why was this app removed and I was not informed?
+
+Do you guys realize how bad this makes me look around people? I look like a dumb idiot when I have no idea that an app is pulled and I have no idea about it.
+11/6/25, 11:39 PM - Asfand: @⁨Zeeshan CEO⁩ @⁨Waqas Sultan⁩ - When are these things going to be fixed? 
+
+I am expecting an answer by tomorrow morning from both of you, and this time I am not listening to any excuses.
+11/6/25, 11:39 PM - Asfand: I have given you guys enough time to fix these stupid issues
+11/6/25, 11:40 PM - Asfand: This is just highest level of unprofessionalism.
+11/7/25, 5:07 AM - Asfand: <Media omitted>
+11/7/25, 5:07 AM - Asfand: @⁨Zeeshan CEO⁩ @⁨Waqas Sultan⁩ - this is the score for the performance of last 3 weeks.
+11/7/25, 5:09 AM - Asfand: This is going below Zuma standards. 
+
+I will wait for you guys to come up with an explanation for this. This is the worse I have seen in 3 years.
+11/7/25, 5:12 AM - Zeeshan CEO: Let me check by myself today and get back
+11/7/25, 12:32 PM - +92 341 2454273: @⁨~Asfand⁩ when can we meet today?
+11/7/25, 1:40 PM - Asfand: Yes
+11/7/25, 1:43 PM - +92 341 2454273: Let me know your suitable time
+11/7/25, 1:56 PM - Asfand: 9
+11/7/25, 1:56 PM - Asfand: Are we pushing this module again today or not
+11/7/25, 2:11 PM - Ammar Ahmed Khan: <Media omitted>
+11/7/25, 2:21 PM - +92 341 2454273: the provided doc mentions the failed case and the planned fix for it. it is being tested as of now. once tested, you will be informed, and after your confirmation, it will be deployed.
+11/7/25, 4:07 PM - Asfand: @⁨Gocha⁩ , please review and put it in the file
+11/7/25, 4:08 PM - Gocha: Will do
+11/7/25, 4:11 PM - Asfand: @⁨Ammar Ahmed Khan⁩ where are with campaign, medium and source field?
+11/7/25, 4:13 PM - Asfand: @⁨~Usama Shahid⁩ who does the QA currently? Is there a person assigned  or is it just Ammar?
+11/7/25, 4:14 PM - +92 341 2454273: As of now, First testing performed by developer, then Ammar.
+11/7/25, 4:14 PM - +92 341 2454273: Will discuss future plan with you on call
+11/7/25, 4:14 PM - Asfand: Okay
+11/7/25, 4:21 PM - Ammar Ahmed Khan: Done on staging

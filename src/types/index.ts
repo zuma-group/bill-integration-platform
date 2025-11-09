@@ -135,6 +135,7 @@ export interface OdooBillPayload {
     "Total Amount": string;
     "invoice-or-credit": "INVOICE" | "CREDIT";
     "Currency"?: string;
+    company_id?: number;  // Company ID: 1 (Zuma Lift Service) or 2 (Zuma Sales LLC)
 
     // Optional fields Odoo expects
     "Carrier"?: string;

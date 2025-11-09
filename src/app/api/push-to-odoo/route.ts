@@ -105,6 +105,17 @@ export async function POST(request: NextRequest) {
       url?: string;
     }> = [];
 
+    // Helper to determine company ID based on PO number prefix (Skyjack bills)
+    // PC prefix = Company 2 (Zuma Sales LLC)
+    // PU prefix = Company 1 (Zuma Lift Service)
+    const determineCompanyId = (poNumber: string | undefined): number => {
+      if (!poNumber) return 1; // default to company 1
+      const upperPo = poNumber.toUpperCase();
+      if (upperPo.includes('PC')) return 2;
+      if (upperPo.includes('PU')) return 1;
+      return 1; // default fallback
+    };
+
     // Transform data to match original working format (async for S3 upload)
     const transformedInvoices = await Promise.all(invoices.map(async (invoice: Invoice, index) => {
         const invoiceKey = invoice.id ?? invoice.invoiceNumber ?? generateTaskId();
@@ -220,6 +231,7 @@ export async function POST(request: NextRequest) {
           // Use original working format (camelCase, nested objects)
           invoiceNumber: rawInvoiceNumber,
           customerPoNumber: invoice.customerPoNumber || '',
+          company_id: determineCompanyId(invoice.customerPoNumber),
           invoiceDate: normalizeToOdooDateFormat(invoice.invoiceDate),
           dueDate: normalizeToOdooDateFormat(invoice.dueDate),
           vendor: {

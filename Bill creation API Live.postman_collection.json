@@ -1,0 +1,40 @@
+{
+	"info": {
+		"_postman_id": "19580c7e-9a59-43a4-b4b1-9bed61e30ca0",
+		"name": "Bill creation API Live",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "38334399"
+	},
+	"item": [
+		{
+			"name": "https://erp.zumasales.com/api/create_invoices",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "?\r\n{\"invoices\": [{\"invoiceNumber\": \"4NV046876\", \"customerPoNumber\": \"4P033445\", \"invoiceDate\": \"2022/10/07\", \"dueDate\": \"\", \"vendor\": {\"name\": \"Lordco Parts Ltd\", \"address\": \"45771 Yale Road W\\nChilliwack, BC V2P 2N5\", \"taxId\": \"R103386363\", \"email\": null, \"phone\": \"(604) 792-1999\"}, \"customer\": {\"name\": \"ZUMA LIFT SERVICE INC\", \"address\": \"PO BOX 574\\nCHILLIWACK, BC V2P7V5\"}, \"lines\": [{\"product_code\": \"75296685\", \"description\": \"QCC 10 LITE\\nPart 75296685 being transferred from branch L12\", \"quantity\": 1, \"unit_price\": 135.04, \"discount\": 0, \"taxes\": [], \"subtotal\": 135.04}], \"taxes\": [{\"tax_type\": \"GST\", \"amount\": 6.75}], \"subtotal\": 135.04, \"taxAmount\": 6.75, \"taxType\": \"GST\", \"total\": 141.79, \"currency\": \"USD\", \"paymentTerms\": \"Net 30 days\", \"pageNumber\": 1, \"pageNumbers\": [1], \"id\": \"742d38ae-4420-40fb-a4ac-0a35c47ef7de\", \"status\": \"extracted\", \"extractedAt\": \"2025-10-31T15:24:18.517Z\", \"taskId\": \"TASK-1761924257386-sqvvzg41o\", \"attachments\": [{\"filename\": \"INV_4NV046876_742d38ae.pdf\", \"url\": \"/api/attachments/INV_4NV046876_742d38ae.pdf\"}]}]}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "https://erp.zumasales.com/api/create_invoices",
+					"protocol": "https",
+					"host": [
+						"erp",
+						"zumasales",
+						"com"
+					],
+					"path": [
+						"api",
+						"create_invoices"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
