@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { useInvoiceStore } from '@/store/invoice-store';
-import { fileToBase64, getMimeType, generateId } from '@/lib/utils';
+import { fileToBase64, getMimeType, generateId, determineCompanyId } from '@/lib/utils';
 import { Invoice, OCRResponse } from '@/types';
 import { AlertCircle, CheckCircle, Link, Send, Trash2, TestTube } from 'lucide-react';
 
@@ -24,6 +24,7 @@ export default function HomePage() {
   const [pushingInvoiceId, setPushingInvoiceId] = useState<string | null>(null);
   const [showResponseModal, setShowResponseModal] = useState(false);
   const [odooResponseDetails, setOdooResponseDetails] = useState<Record<string, unknown> | null>(null);
+  const [configWarnings, setConfigWarnings] = useState<string[]>([]);
 
   const {
     loadData,
@@ -35,7 +36,12 @@ export default function HomePage() {
   } = useInvoiceStore();
 
   useEffect(() => {
-    loadData();
+    loadData().then((result) => {
+      // Check for configuration warnings
+      if (result && typeof result === 'object' && 'warning' in result) {
+        setConfigWarnings(prev => [...prev, result.warning as string]);
+      }
+    });
   }, [loadData]);
 
   const handleFileDrop = async (files: File[]) => {
@@ -96,6 +102,7 @@ export default function HomePage() {
         taskId: ocrData.taskId, // Include taskId from OCR response
         pdfBase64: base64,
         mimeType,
+        companyId: determineCompanyId(invoice.customerPoNumber), // Assign company ID immediately
       }));
 
       updatePipelineStep('processing', 'completed', 'Processed');
@@ -203,6 +210,11 @@ export default function HomePage() {
 
     if (!response.ok) {
       throw new Error(result.error || 'Failed to push to Odoo');
+    }
+    
+    // Check for S3 warnings in response
+    if (result.warning) {
+      setConfigWarnings(prev => [...new Set([...prev, result.warning])]);
     }
 
     setOdooResponseDetails(result);
@@ -372,6 +384,18 @@ export default function HomePage() {
 
   return (
     <div className="space-y-6">
+      {/* Configuration Warnings */}
+      {configWarnings.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {configWarnings.map((warning, index) => (
+            <div key={index} className="flex items-center gap-2 p-4 bg-yellow-50 text-yellow-800 rounded-lg border border-yellow-200">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <span className="text-sm font-medium">{warning}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* File Upload */}
       <Card>
         <CardHeader>

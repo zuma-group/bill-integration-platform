@@ -13,7 +13,7 @@ interface InvoiceStore {
   error: string | null;
 
   // Actions
-  loadData: () => Promise<void>;
+  loadData: () => Promise<{ warning?: string } | null>;
   setInvoices: (invoices: Invoice[]) => void;
   addInvoice: (invoice: Invoice) => Promise<void>;
   updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<void>;
@@ -61,8 +61,12 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       const data = await res.json();
       const invoices: Invoice[] = Array.isArray(data.items) ? data.items : [];
       set({ invoices });
+      
+      // Return the response so warnings can be captured
+      return data;
     } catch (err) {
       console.error('loadData error:', err);
+      return null;
     }
   },
 
@@ -196,6 +200,25 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       return;
     }
     const now = new Date().toISOString();
+    
+    // First, update in-memory state immediately (works with or without DB)
+    const invoiceUpdates = entries.reduce((acc, e) => {
+      if (e.invoice.id) {
+        acc[e.invoice.id] = { ...(e.changes || {}), status: 'synced' as const, syncedAt: now };
+      }
+      return acc;
+    }, {} as Record<string, Partial<Invoice>>);
+    
+    // Apply in-memory updates
+    set((state) => ({
+      invoices: state.invoices.map((inv) => 
+        inv.id && invoiceUpdates[inv.id] 
+          ? { ...inv, ...invoiceUpdates[inv.id] } 
+          : inv
+      ),
+    }));
+    
+    // Then try to persist to DB (if DB is configured)
     const update = async () => {
       const promises = entries
         .filter((e) => e.invoice.id)
@@ -208,10 +231,14 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
         );
       try {
         await Promise.all(promises);
-        // Refresh invoices from DB
-        await get().loadData();
+        // Refresh invoices from DB only if any succeeded
+        const responses = await Promise.all(promises);
+        if (responses.some(r => r.ok)) {
+          await get().loadData();
+        }
       } catch (err) {
-        console.error('syncToOdoo error:', err);
+        console.error('syncToOdoo database persist error (continuing with in-memory state):', err);
+        // Don't throw - in-memory update already succeeded
       }
     };
     update();

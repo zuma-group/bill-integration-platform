@@ -43,117 +43,131 @@ export function InvoiceCard({ invoice, onSendToOdoo, isSending = false }: Invoic
   return (
     <>
       <Card variant="elevated" className="hover:shadow-lg transition-all duration-200">
-        <CardHeader>
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-lg">{invoice.invoiceNumber}</CardTitle>
-          <Badge variant={invoice.status === 'synced' ? 'success' : 'warning'}>
-            {invoice.status}
-          </Badge>
-        </div>
-      </CardHeader>
+        <CardHeader className="pb-4">
+          <div className="flex justify-between items-start gap-3">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-accent-action" />
+              <CardTitle className="text-lg font-bold">{invoice.invoiceNumber}</CardTitle>
+            </div>
+            <Badge variant={invoice.status === 'synced' ? 'success' : 'warning'} size="sm">
+              {invoice.status}
+            </Badge>
+          </div>
+        </CardHeader>
 
-      <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <div className="flex items-center text-sm">
-            <Building2 className="w-4 h-4 mr-2 text-secondary-text" />
-            <span className="text-secondary-text">Vendor:</span>
-            <span className="ml-2 font-medium text-primary-text">{invoice.vendor.name}</span>
+        <CardContent className="space-y-4">
+          {/* Vendor */}
+          <div className="flex items-start gap-3">
+            <Building2 className="w-4 h-4 mt-0.5 text-secondary-text flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-xs text-secondary-text mb-0.5">Vendor</div>
+              <div className="font-medium text-primary-text truncate">{invoice.vendor.name}</div>
+            </div>
           </div>
 
+          {/* PO Number with Company Badge */}
           {invoice.customerPoNumber && (
-            <div className="flex items-center text-sm">
-              <Hash className="w-4 h-4 mr-2 text-secondary-text" />
-              <span className="text-secondary-text">PO#:</span>
-              <span className="ml-2 font-medium text-accent-action">{invoice.customerPoNumber}</span>
-              {invoice.companyId && (
-                <Badge variant="info" size="sm" className="ml-2">
-                  Company {invoice.companyId}
-                </Badge>
-              )}
+            <div className="flex items-start gap-3">
+              <Hash className="w-4 h-4 mt-0.5 text-secondary-text flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-secondary-text mb-0.5">PO Number</div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-accent-action">{invoice.customerPoNumber}</span>
+                  {invoice.companyId && (
+                    <Badge variant="info" size="sm">
+                      Co.{invoice.companyId} - {invoice.companyId === 1 ? 'Zuma Lift' : 'Zuma Sales'}
+                    </Badge>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
-          <div className="flex items-center text-sm">
-            <Calendar className="w-4 h-4 mr-2 text-secondary-text" />
-            <span className="text-secondary-text">Date:</span>
-            <span className="ml-2 font-medium text-primary-text">{invoice.invoiceDate}</span>
+          {/* Date Info Grid */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-start gap-2">
+              <Calendar className="w-4 h-4 mt-0.5 text-secondary-text flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-secondary-text mb-0.5">Date</div>
+                <div className="font-medium text-primary-text text-sm">{invoice.invoiceDate}</div>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Calendar className="w-4 h-4 mt-0.5 text-secondary-text flex-shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-xs text-secondary-text mb-0.5">Due</div>
+                <div className="font-medium text-primary-text text-sm">{invoice.dueDate || 'N/A'}</div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex items-center text-sm">
-            <Calendar className="w-4 h-4 mr-2 text-secondary-text" />
-            <span className="text-secondary-text">Due:</span>
-            <span className="ml-2 font-medium text-primary-text">{invoice.dueDate || 'N/A'}</span>
+          {/* Items Count */}
+          <div className="flex items-center gap-2 text-sm text-secondary-text">
+            <FileText className="w-4 h-4" />
+            <span>{invoice.lineItems.length} line {invoice.lineItems.length === 1 ? 'item' : 'items'}</span>
+            {invoice.batchId && (
+              <>
+                <span className="mx-1">•</span>
+                <span className="text-xs">Batch: {invoice.batchId.slice(0, 8)}</span>
+              </>
+            )}
           </div>
 
-          <div className="flex items-center text-sm">
-            <FileText className="w-4 h-4 mr-2 text-secondary-text" />
-            <span className="text-secondary-text">Items:</span>
-            <span className="ml-2 font-medium text-primary-text">{invoice.lineItems.length} items</span>
+          {/* Total Amount */}
+          <div className="pt-3 border-t border-border-subtle">
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-medium text-secondary-text">Total Amount</span>
+              <span className="text-2xl font-bold text-accent-highlight">
+                {formatCurrency(invoice.total)}
+              </span>
+            </div>
           </div>
-        </div>
+        </CardContent>
 
-        <div className="pt-3 border-t">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-secondary-text">Total Amount</span>
-            <span className="text-xl font-bold text-accent-highlight">
-              {formatCurrency(invoice.total)}
-            </span>
-          </div>
-        </div>
-
-        {invoice.batchId && (
-          <div className="pt-2">
-            <Badge variant="info" size="sm">
-              Batch: {invoice.batchId.slice(0, 8)}
-            </Badge>
-          </div>
-        )}
-      </CardContent>
-
-      <CardFooter className="flex gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          icon={Eye}
-          onClick={() => setShowDetails(true)}
-        >
-          View
-        </Button>
-        {invoice.status === 'extracted' ? (
+        <CardFooter className="flex gap-2 pt-4">
           <Button
-            variant="primary"
+            variant="ghost"
             size="sm"
-            icon={Link}
-          onClick={handleSync}
-          className="flex-1"
-          disabled={!onSendToOdoo || isSending || localSyncing}
+            icon={Eye}
+            onClick={() => setShowDetails(true)}
           >
-            {isSending || localSyncing ? 'Syncing…' : 'Sync to Odoo'}
+            View
           </Button>
-        ) : (
-          <Button variant="secondary" size="sm" disabled className="flex-1">
-            ✓ Synced
+          {invoice.status === 'extracted' ? (
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Link}
+              onClick={handleSync}
+              className="flex-1"
+              disabled={!onSendToOdoo || isSending || localSyncing}
+            >
+              {isSending || localSyncing ? 'Syncing…' : 'Sync to Odoo'}
+            </Button>
+          ) : (
+            <Button variant="secondary" size="sm" disabled className="flex-1">
+              ✓ Synced
+            </Button>
+          )}
+          <Button
+            variant="danger"
+            size="sm"
+            icon={Trash2}
+            onClick={handleDelete}
+          >
+            Delete
           </Button>
-        )}
-        <Button
-          variant="danger"
-          size="sm"
-          icon={Trash2}
-          onClick={handleDelete}
-        >
-          Delete
-        </Button>
-      </CardFooter>
-    </Card>
+        </CardFooter>
+      </Card>
 
-    <Modal
-      isOpen={showDetails}
-      onClose={() => setShowDetails(false)}
-      title="Invoice Details"
-      size="xl"
-    >
-      <InvoiceDetails invoice={invoice} />
-    </Modal>
+      <Modal
+        isOpen={showDetails}
+        onClose={() => setShowDetails(false)}
+        title="Invoice Details"
+        size="xl"
+      >
+        <InvoiceDetails invoice={invoice} />
+      </Modal>
     </>
   );
 }

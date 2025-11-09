@@ -153,3 +153,19 @@ export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.substring(0, maxLength) + '...';
 }
+
+/**
+ * Determines company ID based on PO number prefix (Skyjack bills)
+ * PC prefix = Company 2 (Zuma Sales LLC)
+ * PU prefix = Company 1 (Zuma Lift Service)
+ * 
+ * @param poNumber - Customer PO number
+ * @returns Company ID (1 or 2)
+ */
+export function determineCompanyId(poNumber: string | undefined): number {
+  if (!poNumber) return 1; // default to company 1
+  const upperPo = poNumber.toUpperCase();
+  if (upperPo.includes('PC')) return 2;
+  if (upperPo.includes('PU')) return 1;
+  return 1; // default fallback
+}

@@ -16,6 +16,16 @@ type UnknownLineItem = {
 // GET /api/invoices - list invoices (basic pagination)
 export async function GET(request: NextRequest) {
   try {
+    // Check if DATABASE_URL is configured
+    if (!process.env.DATABASE_URL) {
+      console.warn('DATABASE_URL not configured, returning empty invoice list');
+      return NextResponse.json({ 
+        total: 0, 
+        items: [],
+        warning: 'Database not configured. Invoices will not be persisted.' 
+      });
+    }
+
     const url = new URL(request.url);
     const take = Math.min(200, Math.max(1, parseInt(url.searchParams.get('take') || '50', 10)));
     const skip = Math.max(0, parseInt(url.searchParams.get('skip') || '0', 10));
@@ -66,6 +76,20 @@ export async function GET(request: NextRequest) {
 // POST /api/invoices - create single or bulk invoices
 export async function POST(request: NextRequest) {
   try {
+    // Check if DATABASE_URL is configured
+    if (!process.env.DATABASE_URL) {
+      console.warn('DATABASE_URL not configured, skipping invoice persistence');
+      const body = await request.json();
+      const input = Array.isArray(body) ? body : Array.isArray(body.invoices) ? body.invoices : [body];
+      
+      // Return the invoices as-is without saving
+      return NextResponse.json({ 
+        count: input.length, 
+        items: input,
+        warning: 'Database not configured. Invoices were not persisted.' 
+      });
+    }
+
     const body = await request.json();
     const input = Array.isArray(body) ? body : Array.isArray(body.invoices) ? body.invoices : [body];
 

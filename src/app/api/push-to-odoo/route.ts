@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
 import { Invoice } from '@/types';
 import { uploadPdfBase64 } from '@/lib/s3';
-import { normalizeToOdooDateFormat } from '@/lib/utils';
+import { normalizeToOdooDateFormat, determineCompanyId } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic'; // Prevent caching
 
@@ -104,17 +104,6 @@ export async function POST(request: NextRequest) {
       size: string;
       url?: string;
     }> = [];
-
-    // Helper to determine company ID based on PO number prefix (Skyjack bills)
-    // PC prefix = Company 2 (Zuma Sales LLC)
-    // PU prefix = Company 1 (Zuma Lift Service)
-    const determineCompanyId = (poNumber: string | undefined): number => {
-      if (!poNumber) return 1; // default to company 1
-      const upperPo = poNumber.toUpperCase();
-      if (upperPo.includes('PC')) return 2;
-      if (upperPo.includes('PU')) return 1;
-      return 1; // default fallback
-    };
 
     // Transform data to match original working format (async for S3 upload)
     const transformedInvoices = await Promise.all(invoices.map(async (invoice: Invoice, index) => {
@@ -242,7 +231,6 @@ export async function POST(request: NextRequest) {
           invoiceNumber: rawInvoiceNumber,
           customerPoNumber: invoice.customerPoNumber || '',
           company_id: determineCompanyId(invoice.customerPoNumber),
-          companyId: determineCompanyId(invoice.customerPoNumber), // Store for display in UI
           invoiceDate: normalizeToOdooDateFormat(invoice.invoiceDate),
           dueDate: normalizeToOdooDateFormat(invoice.dueDate),
           vendor: {
@@ -287,6 +275,18 @@ export async function POST(request: NextRequest) {
     console.log('\n🌐 WEBHOOK CONFIGURATION:');
     console.log('ODOO_WEBHOOK_URL:', process.env.ODOO_WEBHOOK_URL || 'NOT SET');
     console.log('ODOO_API_KEY:', process.env.ODOO_API_KEY ? 'SET (hidden)' : 'NOT SET');
+
+    // Make Odoo webhook required
+    if (!process.env.ODOO_WEBHOOK_URL) {
+      console.error('\n❌ CRITICAL: ODOO_WEBHOOK_URL is not configured');
+      return NextResponse.json(
+        {
+          error: 'Odoo webhook is not configured. Please set ODOO_WEBHOOK_URL environment variable.',
+          details: 'Invoice extraction requires Odoo integration to be set up properly.'
+        },
+        { status: 500 }
+      );
+    }
 
     if (process.env.ODOO_WEBHOOK_URL) {
       try {
@@ -356,22 +356,21 @@ export async function POST(request: NextRequest) {
         console.error('Stack trace:', webhookError instanceof Error ? webhookError.stack : 'No stack trace');
         // Continue even if webhook fails
       }
-    } else {
-      console.warn('\n⚠️ ODOO_WEBHOOK_URL is not configured');
-      console.warn('Data prepared but NOT sent to Odoo');
     }
 
     const responseData = {
       success: true,
       taskId,
-      message: process.env.ODOO_WEBHOOK_URL ? 'Data sent to Odoo' : 'Data prepared for Odoo (webhook not configured)',
+      message: 'Data sent to Odoo',
       invoiceCount: invoices.length,
       payload: odooPayload, // Include payload for debugging/documentation
       odooResponse: odooResponseData, // Include Odoo's response if available
       attachmentInfo: attachmentMeta,
+      warning: !process.env.S3_BUCKET ? 'S3 not configured. Using fallback storage (not recommended for production).' : undefined,
       configuration: {
         webhookConfigured: !!process.env.ODOO_WEBHOOK_URL,
-        apiKeyConfigured: !!process.env.ODOO_API_KEY
+        apiKeyConfigured: !!process.env.ODOO_API_KEY,
+        s3Configured: !!process.env.S3_BUCKET
       }
     };
 
