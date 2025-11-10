@@ -37,8 +37,8 @@ COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 USER nextjs
-EXPOSE 3004
-ENV PORT=3004
+EXPOSE 3005
+ENV PORT=3005
 CMD ["/entrypoint.sh"]
 
 

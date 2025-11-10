@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-echo "Starting container with NODE_ENV=${NODE_ENV:-development} on port ${PORT:-3004}"
+echo "Starting container with NODE_ENV=${NODE_ENV:-development} on port ${PORT:-3005}"
 
 if [ -z "$DATABASE_URL" ]; then
   echo "WARNING: DATABASE_URL is not set. Prisma commands may fail."
@@ -16,6 +16,6 @@ else
 fi
 
 echo "Launching Next.js..."
-exec npm run start -- -p "${PORT:-3004}"
+exec npm run start -- -p "${PORT:-3005}"
 
 
