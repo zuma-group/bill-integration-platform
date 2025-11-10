@@ -5,6 +5,8 @@ WORKDIR /app
 FROM base AS deps
 RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json* ./
+# Skip Prisma generate during deps install; builder runs it after copying prisma/
+ENV PRISMA_SKIP_POSTINSTALL_GENERATE=1
 RUN npm ci
 
 # Build stage
