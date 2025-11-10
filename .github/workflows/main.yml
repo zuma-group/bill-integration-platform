@@ -201,36 +201,9 @@ jobs:
           echo "✅ Port 3004 is available"
           
           # Rebuild and restart containers
-          echo "🔨 Building and starting containers..."
-          echo "🔨 Starting Docker build (this may take several minutes)..."
-          
-          # Build in background and monitor
-          nohup docker compose -f docker-compose.yml build --progress=plain > /tmp/docker-build.log 2>&1 &
-          BUILD_PID=$!
-          
-          # Monitor the build process
-          echo "🔨 Build started with PID: $BUILD_PID"
-          for i in {1..60}; do
-            if ! kill -0 $BUILD_PID 2>/dev/null; then
-              echo "🔨 Build completed!"
-              break
-            fi
-            echo "🔨 Build in progress... (${i}/60)"
-            sleep 10
-          done
-          
-          # Check if build was successful
-          wait $BUILD_PID
-          BUILD_EXIT_CODE=$?
-          
-          if [ $BUILD_EXIT_CODE -ne 0 ]; then
-            echo "❌ Docker build failed with exit code: $BUILD_EXIT_CODE"
-            echo "📋 Build logs:"
-            tail -50 /tmp/docker-build.log
-            exit 1
-          fi
-          
-          # Build completed successfully
+          echo "🔨 Building image (this may take several minutes)..."
+          docker compose -f docker-compose.yml build --progress=plain
+          echo "🔨 Build completed."
 
           # Migrations handled by container entrypoint now
           echo "🗄️  Skipping CI-side migrations; entrypoint will apply them"
