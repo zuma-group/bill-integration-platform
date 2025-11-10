@@ -1,0 +1,13 @@
+services:
+  app:
+    build: .
+    container_name: bill-integration-platform
+    ports:
+      - "3004:3004"
+    env_file:
+      - .env
+    restart: unless-stopped
+    environment:
+      - PORT=3004
+
+

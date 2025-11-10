@@ -1,0 +1,287 @@
+name: Main Production CI/CD
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Setup TEST environment variables
+      run: |
+        echo "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres" >> $GITHUB_ENV
+        echo "JWT_SECRET=test-secret-for-ci-only" >> $GITHUB_ENV
+        echo "NODE_ENV=test" >> $GITHUB_ENV
+
+    - name: Debug environment
+      run: |
+        echo "🔍 Environment variables:"
+        echo "DATABASE_URL=$DATABASE_URL"
+        echo "NODE_ENV=$NODE_ENV"
+        echo "🔍 PostgreSQL connection test:"
+        pg_isready -h localhost -p 5432 -U postgres
+        echo "🔍 Test direct connection:"
+        PGPASSWORD=postgres psql -h localhost -p 5432 -U postgres -d postgres -c "SELECT 1"
+
+    - name: Generate Prisma client
+      run: npx prisma generate
+
+    - name: Run linting
+      run: npm run lint
+
+    # Ensure database schema exists (migrate if available, otherwise push)
+    - name: Ensure database schema (migrate or push)
+      run: |
+        set -e
+        echo "🗄️  Applying migrations (if any)..."
+        if npx prisma migrate deploy; then
+          echo "✅ Migrations applied."
+        else
+          echo "ℹ️ No migrations found or apply failed; running db push..."
+          npx prisma db push
+        fi
+    # (Optional) Seeding is disabled because prisma/seed.js does not exist in this repo.
+    # - name: Seed database
+    #   run: node prisma/seed.js
+
+    # - name: Run tests
+    #   run: npm test
+
+    - name: Build application
+      run: npm run build
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: (github.ref == 'refs/heads/main') && github.event_name == 'push'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Create deployment package
+      run: |
+        # Create tar in temp dir to avoid "file changed as we read it" when writing into '.'
+        TMP_TAR="$RUNNER_TEMP/deployment.tar.gz"
+        tar -czf "$TMP_TAR" \
+          --exclude='.git' \
+          --exclude='node_modules' \
+          --exclude='.next' \
+          --exclude='coverage' \
+          --exclude='*.log' \
+          -C "$GITHUB_WORKSPACE" .
+        mv "$TMP_TAR" "$GITHUB_WORKSPACE/deployment.tar.gz"
+    
+    - name: Validate deploy secrets
+      run: |
+        set -euo pipefail
+        fail=false
+        [ -n "${{ secrets.PROD_EC2_HOST }}" ] || { echo "❌ Missing secret: PROD_EC2_HOST"; fail=true; }
+        [ -n "${{ secrets.PROD_EC2_USER }}" ] || { echo "❌ Missing secret: PROD_EC2_USER"; fail=true; }
+        if [ -z "${{ secrets.PROD_EC2_SSH_KEY }}" ]; then
+          echo "❌ Missing secret: PROD_EC2_SSH_KEY"
+          fail=true
+        else
+          echo "✅ SSH key present"
+        fi
+        if [ "$fail" = true ]; then exit 1; fi
+          
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.PROD_EC2_SSH_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H ${{ secrets.PROD_EC2_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Copy deployment package to server
+      run: |
+        set -euo pipefail
+        PORT_OPT=""
+        if [ -n "${{ secrets.PROD_EC2_SSH_PORT }}" ]; then PORT_OPT="-P ${{ secrets.PROD_EC2_SSH_PORT }}"; fi
+        scp -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=no $PORT_OPT deployment.tar.gz ${{ secrets.PROD_EC2_USER }}@${{ secrets.PROD_EC2_HOST }}:/tmp/deployment.tar.gz
+
+    - name: Deploy to Production EC2
+      run: |
+        set -euo pipefail
+        PORT_OPT=""
+        if [ -n "${{ secrets.PROD_EC2_SSH_PORT }}" ]; then PORT_OPT="-p ${{ secrets.PROD_EC2_SSH_PORT }}"; fi
+        ssh -i ~/.ssh/id_rsa -o IdentitiesOnly=yes -o StrictHostKeyChecking=no $PORT_OPT ${{ secrets.PROD_EC2_USER }}@${{ secrets.PROD_EC2_HOST }} << 'EOF'
+          set -euo pipefail
+          # Setup deployment from uploaded package
+          APP_DIR="$HOME/bill-integration-platform"
+          ENV_BACKUP="/tmp/.env.backup"
+          
+          # Backup .env file if it exists
+          if [ -f "$APP_DIR/.env" ]; then
+            echo "💾 Backing up .env file..."
+            cp "$APP_DIR/.env" "$ENV_BACKUP"
+          fi
+          
+          # Clean up old deployment and create fresh directory
+          echo "🧹 Cleaning up old deployment..."
+          rm -rf "$APP_DIR"
+          mkdir -p "$APP_DIR"
+          
+          # Extract new deployment
+          echo "📦 Extracting deployment package..."
+          cd "$APP_DIR"
+          tar -xzf /tmp/deployment.tar.gz
+          
+          # Restore .env file if we had a backup
+          if [ -f "$ENV_BACKUP" ]; then
+            echo "📁 Restoring .env file..."
+            cp "$ENV_BACKUP" .env
+            rm "$ENV_BACKUP"
+          fi
+          
+          # Verify we're in the right directory and files exist
+          echo "📁 Current directory: $(pwd)"
+          echo "📋 Key files check:"
+          ls -la docker-compose.yml .env 2>/dev/null || echo "Some files missing"
+          
+          # Check if .env exists
+          if [ ! -f .env ]; then
+            echo "❌ Error: .env file not found on server!"
+            echo "Please create production .env file on EC2 server first"
+            echo "Expected location: $(pwd)/.env"
+            exit 1
+          fi
+          
+          # Check if docker-compose file exists
+          if [ ! -f docker-compose.yml ]; then
+            echo "❌ Error: docker-compose.yml not found!"
+            echo "Repository may be incomplete"
+            exit 1
+          fi
+          
+          # Stop current application
+          echo "🛑 Stopping current containers..."
+          docker compose -f docker-compose.yml down || true
+          
+          # Check for port conflicts (using port 3004 for app in production)
+          echo "🔍 Checking for port conflicts..."
+          USED_PORTS=$(docker ps --format '{{.Ports}}' | grep -oP '\\d+(?=->)' | sort -n | uniq || echo "")
+          if echo "$USED_PORTS" | grep -q "3004"; then
+           echo "❌ Port 3004 is already in use!"
+           echo "Used ports: $USED_PORTS"
+           echo "Please stop the conflicting service or update docker-compose.yml to use a different port"
+           exit 1
+          fi
+          echo "✅ Port 3004 is available"
+          
+          # Rebuild and restart containers
+          echo "🔨 Building and starting containers..."
+          echo "🔨 Starting Docker build (this may take several minutes)..."
+          
+          # Build in background and monitor
+          nohup docker compose -f docker-compose.yml build --progress=plain > /tmp/docker-build.log 2>&1 &
+          BUILD_PID=$!
+          
+          # Monitor the build process
+          echo "🔨 Build started with PID: $BUILD_PID"
+          for i in {1..60}; do
+            if ! kill -0 $BUILD_PID 2>/dev/null; then
+              echo "🔨 Build completed!"
+              break
+            fi
+            echo "🔨 Build in progress... (${i}/60)"
+            sleep 10
+          done
+          
+          # Check if build was successful
+          wait $BUILD_PID
+          BUILD_EXIT_CODE=$?
+          
+          if [ $BUILD_EXIT_CODE -ne 0 ]; then
+            echo "❌ Docker build failed with exit code: $BUILD_EXIT_CODE"
+            echo "📋 Build logs:"
+            tail -50 /tmp/docker-build.log
+            exit 1
+          fi
+          
+          # Build completed successfully
+
+          # Migrations handled by container entrypoint now
+          echo "🗄️  Skipping CI-side migrations; entrypoint will apply them"
+
+          echo "🚀 Starting app..."
+          # Use --no-recreate to avoid stopping if already running; then ensure it's up
+          docker compose -f docker-compose.yml up -d --remove-orphans
+          
+          sleep 10
+          echo "⏳ Almost ready..."
+          sleep 5
+          
+          # Check if application is running
+          echo "🔍 Checking container status..."
+          docker compose -f docker-compose.yml ps
+          
+          # Look for "Up" instead of "running"
+          if docker compose -f docker-compose.yml ps | grep -q "Up"; then
+            echo "✅ Deployment successful!"
+            echo "🔍 Container status:"
+            docker compose -f docker-compose.yml ps
+            
+          # Test if the app responds
+          echo "🌐 Testing application response..."
+          sleep 5
+          if curl -f http://localhost:3004/ >/dev/null 2>&1; then
+           echo "✅ Application is responding!"
+          else
+           echo "⚠️  Application might still be starting up"
+          fi
+          else
+            echo "❌ Deployment failed!"
+            echo "📋 Container logs:"
+            echo "📋 Recent app logs:"
+            docker compose -f docker-compose.yml logs --tail=200 app || true
+            docker compose -f docker-compose.yml logs
+            exit 1
+          fi
+        EOF
+
+  notify:
+    needs: [test, deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ needs.deploy.result }}" == "success" ]; then
+          echo "🎉 Production deployment to EC2 successful!"
+        else
+          echo "💥 Production deployment to EC2 failed!"
+        fi
