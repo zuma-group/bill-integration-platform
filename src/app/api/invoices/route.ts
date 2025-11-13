@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { extractKeyFromUrl, getObjectUrl, shouldUseSignedUrls } from '@/lib/s3';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -40,28 +41,39 @@ export async function GET(request: NextRequest) {
       prisma.invoice.count(),
     ]);
 
-    // Normalize: lowercase status, numeric fields to numbers, and flatten first attachment
-    const normalized = items.map((inv) => {
-      const firstAtt = Array.isArray(inv.attachments) && inv.attachments.length > 0 ? inv.attachments[0] : undefined;
-      const normalizedLineItems = (inv.lineItems || []).map((li: UnknownLineItem) => ({
-        ...li,
-        quantity: Number(li.quantity),
-        unitPrice: Number(li.unitPrice),
-        amount: Number(li.amount),
-        tax: Number(li.tax ?? 0),
-      }));
-      return {
-        ...inv,
-        status: String(inv.status).toLowerCase(),
-        subtotal: Number(inv.subtotal),
-        taxAmount: Number(inv.taxAmount ?? 0),
-        total: Number(inv.total),
-        lineItems: normalizedLineItems,
-        pdfUrl: firstAtt?.url,
-        attachmentFilename: firstAtt?.filename,
-        mimeType: firstAtt?.mimeType,
-      } as unknown as typeof inv & { pdfUrl?: string; attachmentFilename?: string; mimeType?: string };
-    });
+    // Normalize: lowercase status, numeric fields; flatten first attachment with fresh URL
+    const normalized = await Promise.all(
+      items.map(async (inv) => {
+        const firstAtt = Array.isArray(inv.attachments) && inv.attachments.length > 0 ? inv.attachments[0] : undefined;
+        const normalizedLineItems = (inv.lineItems || []).map((li: UnknownLineItem) => ({
+          ...li,
+          quantity: Number(li.quantity),
+          unitPrice: Number(li.unitPrice),
+          amount: Number(li.amount),
+          tax: Number(li.tax ?? 0),
+        }));
+        let pdfUrl: string | undefined;
+        if (firstAtt?.url) {
+          const key = extractKeyFromUrl(firstAtt.url) || undefined;
+          if (key) {
+            pdfUrl = await getObjectUrl(key);
+          } else {
+            pdfUrl = firstAtt.url;
+          }
+        }
+        return {
+          ...inv,
+          status: String(inv.status).toLowerCase(),
+          subtotal: Number(inv.subtotal),
+          taxAmount: Number(inv.taxAmount ?? 0),
+          total: Number(inv.total),
+          lineItems: normalizedLineItems,
+          pdfUrl,
+          attachmentFilename: firstAtt?.filename,
+          mimeType: firstAtt?.mimeType,
+        } as unknown as typeof inv & { pdfUrl?: string; attachmentFilename?: string; mimeType?: string };
+      })
+    );
 
     return NextResponse.json({ total, items: normalized });
   } catch (error) {
@@ -154,7 +166,12 @@ export async function POST(request: NextRequest) {
                   create: [
                     {
                       filename: inv.attachmentFilename || `${inv.invoiceNumber || 'INV'}-${Date.now()}.pdf`,
-                      url: inv.pdfUrl,
+                      // Store KEY, not signed URL, when using signed mode. Otherwise store URL.
+                      url: (() => {
+                        const key = extractKeyFromUrl(inv.pdfUrl);
+                        if (shouldUseSignedUrls() && key) return key;
+                        return inv.pdfUrl;
+                      })(),
                       mimeType: inv.mimeType || 'application/pdf',
                     },
                   ],
@@ -166,28 +183,39 @@ export async function POST(request: NextRequest) {
       )
     );
 
-    // Normalize: lowercase status, numeric fields to numbers, and flatten attachment in response
-    const normalized = created.map((inv) => {
-      const firstAtt = Array.isArray(inv.attachments) && inv.attachments.length > 0 ? inv.attachments[0] : undefined;
-      const normalizedLineItems = (inv.lineItems || []).map((li: UnknownLineItem) => ({
-        ...li,
-        quantity: Number(li.quantity),
-        unitPrice: Number(li.unitPrice),
-        amount: Number(li.amount),
-        tax: Number(li.tax ?? 0),
-      }));
-      return {
-        ...inv,
-        status: String(inv.status).toLowerCase(),
-        subtotal: Number(inv.subtotal),
-        taxAmount: Number(inv.taxAmount ?? 0),
-        total: Number(inv.total),
-        lineItems: normalizedLineItems,
-        pdfUrl: firstAtt?.url,
-        attachmentFilename: firstAtt?.filename,
-        mimeType: firstAtt?.mimeType,
-      } as unknown as typeof inv & { pdfUrl?: string; attachmentFilename?: string; mimeType?: string };
-    });
+    // Normalize: lowercase status, numeric fields; flatten attachment with fresh URL in response
+    const normalized = await Promise.all(
+      created.map(async (inv) => {
+        const firstAtt = Array.isArray(inv.attachments) && inv.attachments.length > 0 ? inv.attachments[0] : undefined;
+        const normalizedLineItems = (inv.lineItems || []).map((li: UnknownLineItem) => ({
+          ...li,
+          quantity: Number(li.quantity),
+          unitPrice: Number(li.unitPrice),
+          amount: Number(li.amount),
+          tax: Number(li.tax ?? 0),
+        }));
+        let pdfUrl: string | undefined;
+        if (firstAtt?.url) {
+          const key = extractKeyFromUrl(firstAtt.url) || undefined;
+          if (key) {
+            pdfUrl = await getObjectUrl(key);
+          } else {
+            pdfUrl = firstAtt.url;
+          }
+        }
+        return {
+          ...inv,
+          status: String(inv.status).toLowerCase(),
+          subtotal: Number(inv.subtotal),
+          taxAmount: Number(inv.taxAmount ?? 0),
+          total: Number(inv.total),
+          lineItems: normalizedLineItems,
+          pdfUrl,
+          attachmentFilename: firstAtt?.filename,
+          mimeType: firstAtt?.mimeType,
+        } as unknown as typeof inv & { pdfUrl?: string; attachmentFilename?: string; mimeType?: string };
+      })
+    );
 
     return NextResponse.json({ count: normalized.length, items: normalized });
   } catch (error) {

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { splitPdfByInvoices, generateTaskId } from '@/lib/pdf-splitter';
 import { Invoice } from '@/types';
-import { uploadPdfBase64 } from '@/lib/s3';
+import { uploadPdfBase64, extractKeyFromUrl, getObjectUrl } from '@/lib/s3';
+import { prisma } from '@/lib/prisma';
 import { normalizeToOdooDateFormat, determineCompanyId } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic'; // Prevent caching
@@ -105,6 +106,41 @@ export async function POST(request: NextRequest) {
       url?: string;
     }> = [];
 
+    // Helper: resolve a usable PDF URL for an invoice when base64 is not provided
+    const resolvePdfUrl = async (invoice: Invoice): Promise<string | undefined> => {
+      if (invoice.pdfUrl) {
+        // If it's a signed URL and expired, we'll still try fetch; if it fails we fall back to DB
+        const key = extractKeyFromUrl(invoice.pdfUrl) || undefined;
+        if (key) {
+          // Generate a fresh URL from key
+          try {
+            return await getObjectUrl(key);
+          } catch {
+            // fall through to DB lookup
+          }
+        } else {
+          return invoice.pdfUrl;
+        }
+      }
+      if (invoice.id) {
+        try {
+          const inv = await prisma.invoice.findUnique({
+            where: { id: invoice.id },
+            include: { attachments: true },
+          });
+          const attUrl = inv?.attachments?.[0]?.url;
+          if (attUrl) {
+            const key = extractKeyFromUrl(attUrl) || undefined;
+            if (key) {
+              return await getObjectUrl(key);
+            }
+            return attUrl;
+          }
+        } catch {}
+      }
+      return undefined;
+    };
+
     // Transform data to match original working format (async for S3 upload)
     const transformedInvoices = await Promise.all(invoices.map(async (invoice: Invoice, index) => {
         const invoiceKey = invoice.id ?? invoice.invoiceNumber ?? generateTaskId();
@@ -116,10 +152,11 @@ export async function POST(request: NextRequest) {
         const makeFileUrl = async (): Promise<string> => {
           let base64 = splitPdfs.get(invoice.id || '') || originalPdfBase64;
           if (!base64) {
-            if (!invoice.pdfUrl) {
-              throw new Error('Missing PDF data: neither originalPdfBase64 nor invoice.pdfUrl provided');
+            const resolvedUrl = await resolvePdfUrl(invoice);
+            if (!resolvedUrl) {
+              throw new Error('Missing PDF data: neither originalPdfBase64 nor invoice.pdfUrl available or resolvable');
             }
-            const fetched = await fetch(invoice.pdfUrl);
+            const fetched = await fetch(resolvedUrl);
             if (!fetched.ok) throw new Error(`Failed to fetch PDF from ${invoice.pdfUrl}`);
             const blob = await fetched.arrayBuffer();
             base64 = Buffer.from(blob).toString('base64');

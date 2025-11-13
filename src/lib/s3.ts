@@ -65,3 +65,16 @@ export async function getObjectUrl(key: string): Promise<string> {
   }
   return Promise.resolve(getPublicUrl(key));
 }
+
+export function extractKeyFromUrl(urlOrKey: string | undefined | null): string | null {
+  if (!urlOrKey) return null;
+  try {
+    // If it's a URL, parse path as key
+    const u = new URL(urlOrKey);
+    const path = u.pathname.startsWith('/') ? u.pathname.slice(1) : u.pathname;
+    return decodeURIComponent(path);
+  } catch {
+    // Not a URL, assume it's already a key
+    return urlOrKey;
+  }
+}
