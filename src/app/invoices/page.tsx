@@ -9,7 +9,7 @@ import { Link, FileText, Trash2 } from 'lucide-react';
 import { Invoice } from '@/types';
 
 export default function InvoicesPage() {
-  const { invoices, loadData, syncToOdoo, setInvoices, addInvoice } = useInvoiceStore();
+  const { invoices, loadData, syncToOdoo, setInvoices, addInvoice, addOdooRecord } = useInvoiceStore();
   const [syncingInvoiceId, setSyncingInvoiceId] = useState<string | null>(null);
   const [isSyncingAll, setIsSyncingAll] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -92,6 +92,30 @@ export default function InvoicesPage() {
           },
         },
       ]);
+
+      // Also add an Odoo record to display on /odoo page (in-memory client store)
+      try {
+        addOdooRecord({
+          id: `${invoice.id || invoice.invoiceNumber || 'inv'}-${Date.now()}`,
+          move_type: 'in_invoice',
+          partner_id: invoice.vendor.name,
+          invoice_date: invoice.invoiceDate,
+          invoice_date_due: invoice.dueDate || invoice.invoiceDate,
+          ref: invoice.invoiceNumber,
+          customer_po: invoice.customerPoNumber,
+          invoice_line_ids: invoice.lineItems.map(li => ({
+            name: li.description,
+            product_ref: li.partNumber,
+            quantity: Number(li.quantity),
+            price_unit: Number(li.unitPrice),
+            price_subtotal: Number(li.amount),
+            tax_amount: Number(li.tax ?? 0),
+          })),
+          amount_total: Number(invoice.total),
+          state: 'posted',
+          created_at: new Date().toISOString(),
+        });
+      } catch {}
     } else {
       throw new Error('Odoo webhook not configured on server. Data prepared but not sent.');
     }

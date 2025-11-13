@@ -218,22 +218,52 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       ),
     }));
     
-    // Then try to persist to DB (if DB is configured)
+    // Then try to persist to DB (if DB is configured), with fallback create-if-missing
     const update = async () => {
-      const promises = entries
-        .filter((e) => e.invoice.id)
-        .map((e) =>
-          fetch(`/api/invoices/${encodeURIComponent(e.invoice.id as string)}`, {
+      try {
+        let anySucceeded = false;
+        for (const e of entries) {
+          if (!e.invoice.id) continue;
+          // First attempt PATCH
+          const patchRes = await fetch(`/api/invoices/${encodeURIComponent(e.invoice.id as string)}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...(e.changes || {}), status: 'synced', syncedAt: now }),
-          })
-        );
-      try {
-        await Promise.all(promises);
-        // Refresh invoices from DB only if any succeeded
-        const responses = await Promise.all(promises);
-        if (responses.some(r => r.ok)) {
+          });
+          if (patchRes.ok) {
+            anySucceeded = true;
+            continue;
+          }
+          // If not found, create then patch again
+          if (patchRes.status === 404) {
+            try {
+              const createRes = await fetch('/api/invoices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...e.invoice, ...(e.changes || {}), status: 'synced', syncedAt: now }),
+              });
+              if (createRes.ok) {
+                const data = await createRes.json();
+                const created = Array.isArray(data.items) ? data.items[0] : data.item;
+                if (created?.id) {
+                  // Update local store to DB id
+                  set({
+                    invoices: get().invoices.map((inv) =>
+                      inv.id === e.invoice.id ? { ...created } : inv
+                    ),
+                  });
+                  const secondPatch = await fetch(`/api/invoices/${encodeURIComponent(created.id)}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ...(e.changes || {}), status: 'synced', syncedAt: now }),
+                  });
+                  if (secondPatch.ok) anySucceeded = true;
+                }
+              }
+            } catch {}
+          }
+        }
+        if (anySucceeded) {
           await get().loadData();
         }
       } catch (err) {
