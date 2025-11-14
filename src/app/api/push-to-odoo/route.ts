@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
       filename: string;
       size: string;
       url?: string;
+      path?: string;
     }> = [];
 
     // Transform data to match original working format (async for S3 upload)
@@ -136,11 +137,15 @@ export async function POST(request: NextRequest) {
         const sanitizedNumber = rawInvoiceNumber.replace(/[^a-zA-Z0-9]/g, '_') || `INV_${index + 1}`;
         const filenameSuffix = invoiceKey.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8) || `IDX${index}`;
         const filename = `INV_${sanitizedNumber}_${filenameSuffix}.pdf`;
+        const attachmentPath = `/api/attachments/${filename}`;
+        const publicAttachmentUrl = process.env.NEXT_PUBLIC_BASE_URL
+          ? `${process.env.NEXT_PUBLIC_BASE_URL}${attachmentPath}`
+          : attachmentPath;
         
         console.log(`    Invoice key: ${invoiceKey}`);
         console.log(`    Filename: ${filename}`);
 
-        const makeFileUrl = async (): Promise<string> => {
+        const makeFileUrl = async (): Promise<{ publicUrl: string; sizeKb: number }> => {
           console.log(`    📎 STEP 4.${index + 1}.1: PREPARING PDF FOR S3`);
           let base64 = splitPdfs.get(invoice.id || '') || originalPdfBase64;
           console.log(`      Has split PDF: ${!!splitPdfs.get(invoice.id || '')}`);
@@ -171,13 +176,15 @@ export async function POST(request: NextRequest) {
           
           const key = `odoo/${filename}`;
           console.log(`      S3 key: ${key}`);
+          const sizeKb = Math.round((base64.length * 0.75) / 1024);
           
           attachmentMeta.push({
             invoiceId: invoiceKey,
             invoiceNumber: rawInvoiceNumber,
             filename,
-            size: `${Math.round((base64.length * 0.75) / 1024)} KB`,
-            url: undefined
+            size: `${sizeKb} KB`,
+            url: undefined,
+            path: attachmentPath
           });
 
           console.log(`    📤 STEP 4.${index + 1}.2: UPLOADING TO S3`);
@@ -186,19 +193,26 @@ export async function POST(request: NextRequest) {
           const uploadStart = Date.now();
           
           try {
-          // Upload to S3 first (we still need to store it)
-          await uploadPdfBase64(key, base64, 'application/pdf');
-          const uploadTime = Date.now() - uploadStart;
-          console.log(`      ✅ S3 upload successful in ${uploadTime}ms`);
-          
-          // Return relative path for Odoo (Odoo will fetch from our BIP server)
-          // Our /api/attachments/[filename] endpoint will proxy to S3
-          const relativeUrl = `/api/attachments/${filename}`;
-          console.log(`      Relative URL for Odoo: ${relativeUrl}`);
-          
-          // Update attachment meta with relative URL
-          attachmentMeta[attachmentMeta.length - 1].url = relativeUrl;
-          return relativeUrl;
+            // Upload to S3 first (we still need to store it)
+            const url = await uploadPdfBase64(key, base64, 'application/pdf');
+            const uploadTime = Date.now() - uploadStart;
+            console.log(`      ✅ S3 upload successful in ${uploadTime}ms`);
+            console.log(`      S3 URL: ${url}`);
+            console.log(`      S3 URL length: ${url.length} chars`);
+
+            if (url.includes('X-Amz-Expires=')) {
+              const expiresMatch = url.match(/X-Amz-Expires=(\d+)/);
+              if (expiresMatch) {
+                const expiresSeconds = parseInt(expiresMatch[1], 10);
+                const expiresHours = (expiresSeconds / 3600).toFixed(1);
+                console.log(`      URL expiration: ${expiresSeconds}s (${expiresHours} hours)`);
+              }
+            }
+
+            // Update attachment meta with full S3 URL
+            attachmentMeta[attachmentMeta.length - 1].url = publicAttachmentUrl;
+            attachmentMeta[attachmentMeta.length - 1].path = attachmentPath;
+            return { publicUrl: publicAttachmentUrl, sizeKb };
           } catch (s3Error) {
             const uploadTime = Date.now() - uploadStart;
             console.error(`      ❌ S3 upload failed after ${uploadTime}ms`);
@@ -207,7 +221,7 @@ export async function POST(request: NextRequest) {
           }
         };
 
-        const fileUrl = await makeFileUrl();
+        const { publicUrl: fileUrl, sizeKb } = await makeFileUrl();
         console.log(`    ✅ PDF URL obtained: ${fileUrl.substring(0, 100)}...`);
 
         // (meta entry already set in makeFileUrl)
@@ -314,49 +328,43 @@ export async function POST(request: NextRequest) {
         const companyId = determineCompanyId(invoice.customerPoNumber);
         console.log(`      Company ID: ${companyId} (PO: ${invoice.customerPoNumber || 'NONE'})`);
         
+        const invoiceDate = normalizeToOdooDateFormat(invoice.invoiceDate);
+        const dueDate = normalizeToOdooDateFormat(invoice.dueDate);
+        const customerBlock = [invoice.customer.name, invoice.customer.address].filter(Boolean).join('\n');
+        const attachmentEntry = [{
+          filename,
+          url: publicAttachmentUrl,
+          size: sizeKb,
+        }];
+        
         const transformedInvoice = {
-          // Use original working format (camelCase, nested objects)
-          invoiceNumber: rawInvoiceNumber,
-          customerPoNumber: invoice.customerPoNumber || '',
-          company_id: determineCompanyId(invoice.customerPoNumber),
-          invoiceDate: normalizeToOdooDateFormat(invoice.invoiceDate),
-          dueDate: normalizeToOdooDateFormat(invoice.dueDate),
-          vendor: {
-            name: invoice.vendor.name,
-            address: invoice.vendor.address,
-            taxId: invoice.vendor.taxId,
-            email: invoice.vendor.email,
-            phone: invoice.vendor.phone
-          },
-          customer: {
-            name: invoice.customer.name,
-            address: invoice.customer.address
-          },
+          'Invoice-No': rawInvoiceNumber,
+          'Invoice-Date': invoiceDate || invoice.invoiceDate || '',
+          'Customer PO Number': invoice.customerPoNumber || '',
+          Customer: customerBlock,
+          'Customer No': '',
+          Vendor: invoice.vendor.name,
+          'Vendor Address': invoice.vendor.address || '',
+          'Vendor No': invoice.vendor.taxId || '',
+          'Bill-To': invoice.customer.name || '',
+          'Bill-To Address': invoice.customer.address || '',
+          'Payment Terms': invoice.paymentTerms || 'NET 30 DAYS',
+          'Subtotal': subtotalValue.toFixed(2),
+          'Tax Amount': taxTotalValue.toFixed(2),
+          'Total Amount': totalAmountValue.toFixed(2),
+          'invoice-or-credit': 'INVOICE' as const,
+          Currency: invoice.currency || 'USD',
+          company_id: companyId,
           lines,
           taxes,
-          subtotal: subtotalValue,
-          taxAmount: taxTotalValue,
-          taxType: invoice.taxType,  // Show the tax type (GST, PST, etc.)
-          total: totalAmountValue,
-          currency: 'USD',  // Force to USD to ensure valid currency_id mapping in Odoo
-          paymentTerms: invoice.paymentTerms || 'NET 30 DAYS',
-          pageNumber: invoice.pageNumber,
-          pageNumbers: invoice.pageNumbers,
-          id: invoice.id,
-          status: invoice.status,
-          extractedAt: invoice.extractedAt,
-          taskId: invoice.taskId,
-          batchId: invoice.batchId,
-
-          // Send attachments with url only (Odoo will fetch from URL)
-          attachments: [{
-            filename,
-            url: fileUrl
-          }]
+          attachments: attachmentEntry,
+          'Customer Order Date': dueDate || '',
+          'Page No': invoice.pageNumber ? String(invoice.pageNumber) : '',
+          'Sales Order No': invoice.customerPoNumber || '',
         };
         
         console.log(`    ✅ Invoice ${index + 1} transformation complete`);
-        console.log(`      Invoice number: ${transformedInvoice.invoiceNumber}`);
+        console.log(`      Invoice number: ${transformedInvoice['Invoice-No']}`);
         console.log(`      Company ID: ${transformedInvoice.company_id}`);
         console.log(`      Lines: ${transformedInvoice.lines.length}`);
         console.log(`      Attachments: ${transformedInvoice.attachments.length}`);
@@ -374,13 +382,15 @@ export async function POST(request: NextRequest) {
     console.log(`Payload size: ${(payloadStr.length / 1024).toFixed(2)} KB`);
     console.log(`Payload structure:`, {
       invoicesCount: odooPayload.invoices.length,
-      firstInvoice: {
-        invoiceNumber: odooPayload.invoices[0]?.invoiceNumber,
-        company_id: odooPayload.invoices[0]?.company_id,
-        linesCount: odooPayload.invoices[0]?.lines?.length,
-        attachmentsCount: odooPayload.invoices[0]?.attachments?.length,
-        attachmentUrl: odooPayload.invoices[0]?.attachments?.[0]?.url?.substring(0, 100)
-      }
+      firstInvoice: odooPayload.invoices[0]
+        ? {
+            invoiceNumber: odooPayload.invoices[0]['Invoice-No'],
+            company_id: odooPayload.invoices[0].company_id,
+            linesCount: odooPayload.invoices[0].lines?.length,
+            attachmentsCount: odooPayload.invoices[0].attachments?.length,
+            attachmentUrl: odooPayload.invoices[0].attachments?.[0]?.url?.substring(0, 100)
+          }
+        : null
     });
 
     // Forward to Odoo webhook (when configured)
@@ -418,7 +428,7 @@ export async function POST(request: NextRequest) {
         console.log('\n🚀 STEP 6: SENDING TO ODOO WEBHOOK');
         console.log('Webhook URL:', webhookUrl);
         console.log('Number of invoices:', odooPayload.invoices.length);
-        console.log('Invoice numbers:', odooPayload.invoices.map(inv => inv.invoiceNumber));
+        console.log('Invoice numbers:', odooPayload.invoices.map(inv => inv['Invoice-No']));
 
         // Odoo expects JSON with 'invoices' array - send full payload
         const odooRequestPayload = odooPayload;

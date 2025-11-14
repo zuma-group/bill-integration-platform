@@ -298,9 +298,9 @@ export default function HomePage() {
         );
 
         // Find the corresponding invoice in the result payload to get companyId
-        const payloadInvoice = result.payload?.invoices?.find((inv: { invoiceNumber: string }) => 
-          inv.invoiceNumber === invoice.invoiceNumber
-        );
+        const payloadInvoice = result.payload?.invoices?.find((inv: { ['Invoice-No']?: string; invoiceNumber?: string }) => 
+          (inv['Invoice-No'] || inv.invoiceNumber) === invoice.invoiceNumber
+        ) as { company_id?: number; companyId?: number } | undefined;
 
         return {
           invoice,
@@ -308,7 +308,7 @@ export default function HomePage() {
             pdfUrl: attachment?.url,
             attachmentFilename: attachment?.filename,
             syncedAt: syncTimestamp,
-            companyId: payloadInvoice?.companyId, // Include company ID from payload
+            companyId: payloadInvoice?.company_id ?? payloadInvoice?.companyId, // Include company ID from payload
           } as Partial<Invoice>,
         };
       });
