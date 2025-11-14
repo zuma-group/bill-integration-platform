@@ -218,6 +218,16 @@ export default function HomePage() {
       throw new Error(result.error || 'Failed to push to Odoo');
     }
     
+    // Check if Odoo actually accepted the data
+    if (result.odooResponse && 'error' in result.odooResponse) {
+      const odooError = result.odooResponse;
+      console.error('❌ Odoo rejected the data:', odooError);
+      setError(`Odoo rejected the invoice data. Status: ${odooError.status} ${odooError.statusText}. Error: ${odooError.error}`);
+    } else if (result.odooSucceeded === false) {
+      console.error('❌ Odoo sync failed');
+      setError('Failed to sync with Odoo. Check server logs for details.');
+    }
+    
     // Check for S3 warnings in response
     if (result.warning) {
       setConfigWarnings(prev => [...new Set([...prev, result.warning])]);
@@ -241,8 +251,9 @@ export default function HomePage() {
 
     const syncTimestamp = new Date().toISOString();
     const webhookConfigured = Boolean(result.configuration?.webhookConfigured);
+    const odooSucceeded = result.odooSucceeded !== false; // Only update invoices if Odoo actually accepted
 
-    if (webhookConfigured) {
+    if (webhookConfigured && odooSucceeded) {
       const updatedInvoices = invoicesToPush.map((invoice) => {
         const invoiceKey = getInvoiceKey(invoice);
         const attachment = attachments.find(att =>

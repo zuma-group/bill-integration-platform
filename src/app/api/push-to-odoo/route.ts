@@ -81,20 +81,39 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate invoices
+    console.log('\n📋 STEP 1: VALIDATING INVOICES');
+    console.log('Number of invoices received:', invoices?.length || 0);
     if (!Array.isArray(invoices) || invoices.length === 0) {
+      console.error('❌ Validation failed: Invalid or empty invoices array');
       return NextResponse.json(
         { error: 'Invalid or empty invoices array' },
         { status: 400 }
       );
     }
+    console.log('✅ Invoice validation passed');
+    invoices.forEach((inv, idx) => {
+      console.log(`  Invoice ${idx + 1}: ${inv.invoiceNumber || 'NO_NUMBER'} (ID: ${inv.id || 'NO_ID'})`);
+    });
 
     // Generate unique task ID
     const taskId = generateTaskId();
+    console.log('\n📝 STEP 2: GENERATING TASK ID');
+    console.log('Task ID:', taskId);
 
     // Split PDF if multiple invoices
+    console.log('\n📄 STEP 3: PROCESSING PDF');
+    console.log('Has originalPdfBase64:', !!originalPdfBase64);
+    console.log('Original PDF size:', originalPdfBase64 ? `${(originalPdfBase64.length * 0.75 / 1024).toFixed(2)} KB` : 'N/A');
     let splitPdfs: Map<string, string> = new Map();
     if (originalPdfBase64) {
+      console.log('Splitting PDF by invoices...');
       splitPdfs = await splitPdfByInvoices(originalPdfBase64, invoices);
+      console.log(`✅ PDF split complete. Split PDFs count: ${splitPdfs.size}`);
+      splitPdfs.forEach((pdf, invId) => {
+        console.log(`  Split PDF for invoice ${invId}: ${(pdf.length * 0.75 / 1024).toFixed(2)} KB`);
+      });
+    } else {
+      console.log('⚠️ No originalPdfBase64 provided, will fetch from invoice.pdfUrl if needed');
     }
 
     const attachmentMeta: Array<{
@@ -106,25 +125,53 @@ export async function POST(request: NextRequest) {
     }> = [];
 
     // Transform data to match original working format (async for S3 upload)
+    console.log('\n🔄 STEP 4: TRANSFORMING INVOICES FOR ODOO');
+    console.log(`Processing ${invoices.length} invoice(s)...`);
+    
     const transformedInvoices = await Promise.all(invoices.map(async (invoice: Invoice, index) => {
+        console.log(`\n  📦 Processing invoice ${index + 1}/${invoices.length}: ${invoice.invoiceNumber || 'NO_NUMBER'}`);
+        
         const invoiceKey = invoice.id ?? invoice.invoiceNumber ?? generateTaskId();
         const rawInvoiceNumber = invoice.invoiceNumber || `INV-${index + 1}`;
         const sanitizedNumber = rawInvoiceNumber.replace(/[^a-zA-Z0-9]/g, '_') || `INV_${index + 1}`;
         const filenameSuffix = invoiceKey.replace(/[^a-zA-Z0-9]/g, '').slice(0, 8) || `IDX${index}`;
         const filename = `INV_${sanitizedNumber}_${filenameSuffix}.pdf`;
+        
+        console.log(`    Invoice key: ${invoiceKey}`);
+        console.log(`    Filename: ${filename}`);
 
         const makeFileUrl = async (): Promise<string> => {
+          console.log(`    📎 STEP 4.${index + 1}.1: PREPARING PDF FOR S3`);
           let base64 = splitPdfs.get(invoice.id || '') || originalPdfBase64;
+          console.log(`      Has split PDF: ${!!splitPdfs.get(invoice.id || '')}`);
+          console.log(`      Has originalPdfBase64: ${!!originalPdfBase64}`);
+          console.log(`      Has invoice.pdfUrl: ${!!invoice.pdfUrl}`);
+          
           if (!base64) {
             if (!invoice.pdfUrl) {
+              console.error(`      ❌ Missing PDF data for invoice ${invoice.invoiceNumber}`);
               throw new Error('Missing PDF data: neither originalPdfBase64 nor invoice.pdfUrl provided');
             }
+            console.log(`      Fetching PDF from: ${invoice.pdfUrl}`);
+            const fetchStart = Date.now();
             const fetched = await fetch(invoice.pdfUrl);
-            if (!fetched.ok) throw new Error(`Failed to fetch PDF from ${invoice.pdfUrl}`);
+            const fetchTime = Date.now() - fetchStart;
+            console.log(`      Fetch completed in ${fetchTime}ms, status: ${fetched.status} ${fetched.statusText}`);
+            
+            if (!fetched.ok) {
+              console.error(`      ❌ Failed to fetch PDF: ${fetched.status} ${fetched.statusText}`);
+              throw new Error(`Failed to fetch PDF from ${invoice.pdfUrl}`);
+            }
             const blob = await fetched.arrayBuffer();
             base64 = Buffer.from(blob).toString('base64');
+            console.log(`      ✅ PDF fetched and converted to base64: ${(base64.length * 0.75 / 1024).toFixed(2)} KB`);
+          } else {
+            console.log(`      ✅ Using existing base64: ${(base64.length * 0.75 / 1024).toFixed(2)} KB`);
           }
+          
           const key = `odoo/${filename}`;
+          console.log(`      S3 key: ${key}`);
+          
           attachmentMeta.push({
             invoiceId: invoiceKey,
             invoiceNumber: rawInvoiceNumber,
@@ -133,17 +180,35 @@ export async function POST(request: NextRequest) {
             url: undefined
           });
 
-          const url = await uploadPdfBase64(key, base64, 'application/pdf');
-          // set url on last pushed meta
-          attachmentMeta[attachmentMeta.length - 1].url = url;
-          return url;
+          console.log(`    📤 STEP 4.${index + 1}.2: UPLOADING TO S3`);
+          console.log(`      Key: ${key}`);
+          console.log(`      Size: ${(base64.length * 0.75 / 1024).toFixed(2)} KB`);
+          const uploadStart = Date.now();
+          
+          try {
+            const url = await uploadPdfBase64(key, base64, 'application/pdf');
+            const uploadTime = Date.now() - uploadStart;
+            console.log(`      ✅ S3 upload successful in ${uploadTime}ms`);
+            console.log(`      URL: ${url}`);
+            // set url on last pushed meta
+            attachmentMeta[attachmentMeta.length - 1].url = url;
+            return url;
+          } catch (s3Error) {
+            const uploadTime = Date.now() - uploadStart;
+            console.error(`      ❌ S3 upload failed after ${uploadTime}ms`);
+            console.error(`      Error:`, s3Error instanceof Error ? s3Error.message : s3Error);
+            throw s3Error;
+          }
         };
 
         const fileUrl = await makeFileUrl();
+        console.log(`    ✅ PDF URL obtained: ${fileUrl.substring(0, 100)}...`);
 
         // (meta entry already set in makeFileUrl)
 
-        const baseLines = invoice.lineItems.map(item => {
+        console.log(`    📊 STEP 4.${index + 1}.3: PROCESSING LINE ITEMS`);
+        console.log(`      Line items count: ${invoice.lineItems.length}`);
+        const baseLines = invoice.lineItems.map((item, lineIdx) => {
           const safeQuantity = Number.isFinite(item.quantity) && item.quantity > 0 ? Number(item.quantity) : 1;
           const rawAmount = Number.isFinite(item.amount) ? Number(item.amount) : 0;
           const derivedUnit = Number.isFinite(item.unitPrice) && item.unitPrice > 0
@@ -164,7 +229,7 @@ export async function POST(request: NextRequest) {
             ? desiredSubtotal
             : adjustedSubtotal;
 
-          return {
+          const lineItem = {
             product_code: item.partNumber || '',
             description: item.description,
             quantity: safeQuantity,
@@ -173,15 +238,33 @@ export async function POST(request: NextRequest) {
             taxes: [] as unknown[],
             subtotal,
           };
+          
+          if (lineIdx === 0) {
+            console.log(`      Sample line item:`, {
+              product_code: lineItem.product_code,
+              description: lineItem.description.substring(0, 50),
+              quantity: lineItem.quantity,
+              unit_price: lineItem.unit_price,
+              subtotal: lineItem.subtotal
+            });
+          }
+          
+          return lineItem;
         });
+        
+        console.log(`      ✅ Processed ${baseLines.length} line items`);
 
+        console.log(`    💰 STEP 4.${index + 1}.4: CALCULATING TOTALS`);
         const subtotalValue = Number(
           baseLines.reduce((sum, line) => sum + Number(line.subtotal || 0), 0).toFixed(2)
         );
+        console.log(`      Subtotal: $${subtotalValue.toFixed(2)}`);
 
         const taxAmountValue = Number((invoice.taxAmount ?? 0).toFixed(2));
+        console.log(`      Tax amount: $${taxAmountValue.toFixed(2)}`);
         const taxes: Array<{ tax_type: string; amount: number }> = [];
         const taxType = invoice.taxType?.toUpperCase() || '';
+        console.log(`      Tax type: ${taxType || 'NONE'}`);
 
         if (Math.abs(taxAmountValue) > 0) {
           if (taxType.includes('GST') && taxType.includes('PST')) {
@@ -213,11 +296,19 @@ export async function POST(request: NextRequest) {
         const taxTotalValue = taxes.length ? Number(taxTotalFromArray.toFixed(2)) : taxAmountValue;
         const lines = baseLines;
         const totalAmountValue = Number((subtotalValue + taxTotalValue).toFixed(2));
+        
+        console.log(`      Tax total: $${taxTotalValue.toFixed(2)}`);
+        console.log(`      Total: $${totalAmountValue.toFixed(2)}`);
+        console.log(`      Taxes breakdown:`, taxes);
 
         // Keep PDF base64 for later conversion to file when sending to Odoo
         // But DON'T include it in the invoice data
 
-        return {
+        console.log(`    🏗️ STEP 4.${index + 1}.5: BUILDING ODOO PAYLOAD`);
+        const companyId = determineCompanyId(invoice.customerPoNumber);
+        console.log(`      Company ID: ${companyId} (PO: ${invoice.customerPoNumber || 'NONE'})`);
+        
+        const transformedInvoice = {
           // Use original working format (camelCase, nested objects)
           invoiceNumber: rawInvoiceNumber,
           customerPoNumber: invoice.customerPoNumber || '',
@@ -257,8 +348,34 @@ export async function POST(request: NextRequest) {
             url: fileUrl
           }]
         };
-    }))
+        
+        console.log(`    ✅ Invoice ${index + 1} transformation complete`);
+        console.log(`      Invoice number: ${transformedInvoice.invoiceNumber}`);
+        console.log(`      Company ID: ${transformedInvoice.company_id}`);
+        console.log(`      Lines: ${transformedInvoice.lines.length}`);
+        console.log(`      Attachments: ${transformedInvoice.attachments.length}`);
+        console.log(`      Attachment URL: ${transformedInvoice.attachments[0]?.url?.substring(0, 100)}...`);
+        
+        return transformedInvoice;
+    }));
+    
+    console.log('\n✅ STEP 4 COMPLETE: All invoices transformed');
+    console.log(`Total transformed invoices: ${transformedInvoices.length}`);
+    
     const odooPayload = { invoices: transformedInvoices };
+    console.log('\n📦 STEP 5: PAYLOAD CONSTRUCTION');
+    const payloadStr = JSON.stringify(odooPayload);
+    console.log(`Payload size: ${(payloadStr.length / 1024).toFixed(2)} KB`);
+    console.log(`Payload structure:`, {
+      invoicesCount: odooPayload.invoices.length,
+      firstInvoice: {
+        invoiceNumber: odooPayload.invoices[0]?.invoiceNumber,
+        company_id: odooPayload.invoices[0]?.company_id,
+        linesCount: odooPayload.invoices[0]?.lines?.length,
+        attachmentsCount: odooPayload.invoices[0]?.attachments?.length,
+        attachmentUrl: odooPayload.invoices[0]?.attachments?.[0]?.url?.substring(0, 100)
+      }
+    });
 
     // Forward to Odoo webhook (when configured)
     let odooResponseData = null;
@@ -281,22 +398,14 @@ export async function POST(request: NextRequest) {
 
     if (process.env.ODOO_WEBHOOK_URL) {
       try {
-        console.log('\n🚀 ATTEMPTING TO SEND TO ODOO...');
+        console.log('\n🚀 STEP 6: SENDING TO ODOO WEBHOOK');
         console.log('Webhook URL:', process.env.ODOO_WEBHOOK_URL);
         console.log('Number of invoices:', odooPayload.invoices.length);
         console.log('Invoice numbers:', odooPayload.invoices.map(inv => inv.invoiceNumber));
 
-        // Log payload size
-        const payloadStr = JSON.stringify(odooPayload);
-        console.log('Payload size:', (payloadStr.length / 1024).toFixed(2), 'KB');
-
-        // Log a sample of the payload
-        console.log('\nPayload structure (invoice data only, PDFs sent separately):');
-        console.log(JSON.stringify(odooPayload, null, 2));
-
         // Odoo expects JSON with 'invoices' array - send full payload
         const odooRequestPayload = odooPayload;
-
+        
         // PDFs are already stored and URLs are set - no need to embed base64
         
         // Headers for JSON request
@@ -305,57 +414,114 @@ export async function POST(request: NextRequest) {
           ...(process.env.ODOO_API_KEY && { 'X-API-Key': process.env.ODOO_API_KEY })
         };
 
-        console.log('\nRequest headers:', headers);
-        console.log("Sending JSON payload with 'invoices' array");
-        console.log('Invoices count:', odooRequestPayload.invoices.length);
-        console.log('First attachment filename:', odooRequestPayload.invoices[0]?.attachments?.[0]?.filename);
-
+        console.log('\n  📤 STEP 6.1: PREPARING REQUEST');
+        console.log('    Headers:', {
+          'Content-Type': headers['Content-Type'],
+          'X-API-Key': headers['X-API-Key'] ? 'SET (hidden)' : 'NOT SET'
+        });
+        console.log('    Method: POST');
+        console.log('    URL:', process.env.ODOO_WEBHOOK_URL);
+        console.log('    Payload invoices count:', odooRequestPayload.invoices.length);
+        console.log('    First invoice attachment URL:', odooRequestPayload.invoices[0]?.attachments?.[0]?.url?.substring(0, 150));
+        
+        const requestBody = JSON.stringify(odooRequestPayload);
+        console.log('    Request body size:', (requestBody.length / 1024).toFixed(2), 'KB');
+        
+        console.log('\n  📡 STEP 6.2: SENDING REQUEST TO ODOO');
+        const requestStart = Date.now();
+        
         const odooResponse = await fetch(process.env.ODOO_WEBHOOK_URL, {
           method: 'POST',
           headers,
-          body: JSON.stringify(odooRequestPayload)
+          body: requestBody
         });
+        
+        const requestTime = Date.now() - requestStart;
+        console.log(`    Request completed in ${requestTime}ms`);
 
-        console.log('\n📡 Response received from Odoo:');
-        console.log('Status:', odooResponse.status, odooResponse.statusText);
-        console.log('Headers:', Object.fromEntries(odooResponse.headers.entries()));
+        console.log('\n  📥 STEP 6.3: PROCESSING ODOO RESPONSE');
+        console.log('    Status:', odooResponse.status, odooResponse.statusText);
+        console.log('    Status OK:', odooResponse.ok);
+        console.log('    Response headers:', Object.fromEntries(odooResponse.headers.entries()));
 
         if (!odooResponse.ok) {
           const errorText = await odooResponse.text();
-          console.error('❌ ODOO WEBHOOK FAILED');
-          console.error('Status:', odooResponse.status, odooResponse.statusText);
-          console.error('Error response body:', errorText);
-          // Don't fail the entire request if Odoo fails
+          console.error('\n    ❌ ODOO WEBHOOK FAILED');
+          console.error('    Status:', odooResponse.status, odooResponse.statusText);
+          console.error('    Error response body length:', errorText.length, 'chars');
+          console.error('    Error response body (first 500 chars):', errorText.substring(0, 500));
+          if (errorText.length > 500) {
+            console.error('    ... (truncated)');
+          }
+          
+          // Store error in response data so client knows Odoo rejected it
+          try {
+            // Try to parse as JSON if possible
+            let parsedError;
+            try {
+              parsedError = JSON.parse(errorText);
+              console.error('    Parsed error (JSON):', parsedError);
+            } catch {
+              parsedError = errorText;
+            }
+            odooResponseData = { error: parsedError, status: odooResponse.status, statusText: odooResponse.statusText };
+          } catch {
+            odooResponseData = { error: 'Failed to parse error response', status: odooResponse.status, statusText: odooResponse.statusText };
+          }
+          console.error('    ❌ Odoo rejected the request');
         } else {
           const responseText = await odooResponse.text();
-          console.log('✅ ODOO WEBHOOK SUCCESS');
-          console.log('Raw response:', responseText);
+          console.log('\n    ✅ ODOO WEBHOOK SUCCESS');
+          console.log('    Response body length:', responseText.length, 'chars');
+          console.log('    Response body (first 500 chars):', responseText.substring(0, 500));
+          if (responseText.length > 500) {
+            console.log('    ... (truncated)');
+          }
 
           try {
             odooResponseData = JSON.parse(responseText);
-            console.log('Parsed response:', odooResponseData);
+            console.log('    ✅ Parsed as JSON successfully');
+            console.log('    Parsed response keys:', Object.keys(odooResponseData));
+            console.log('    Parsed response:', JSON.stringify(odooResponseData, null, 2).substring(0, 1000));
           } catch (parseError) {
-            console.log('Response is not JSON, using raw text');
-            console.log('Parse error:', parseError);
+            console.log('    ⚠️ Response is not JSON, using raw text');
+            console.log('    Parse error:', parseError instanceof Error ? parseError.message : parseError);
             odooResponseData = { rawResponse: responseText };
           }
         }
       } catch (webhookError) {
-        console.error('\n🔥 CRITICAL ERROR sending to Odoo webhook:');
-        console.error('Error type:', webhookError instanceof Error ? webhookError.constructor.name : typeof webhookError);
-        console.error('Error message:', webhookError instanceof Error ? webhookError.message : webhookError);
-        console.error('Stack trace:', webhookError instanceof Error ? webhookError.stack : 'No stack trace');
+        console.error('\n  🔥 STEP 6.4: CRITICAL ERROR SENDING TO ODOO');
+        console.error('    Error type:', webhookError instanceof Error ? webhookError.constructor.name : typeof webhookError);
+        console.error('    Error message:', webhookError instanceof Error ? webhookError.message : webhookError);
+        if (webhookError instanceof Error) {
+          console.error('    Error name:', webhookError.name);
+          console.error('    Stack trace:', webhookError.stack);
+        } else {
+          console.error('    Error details:', webhookError);
+        }
+        odooResponseData = { 
+          error: webhookError instanceof Error ? webhookError.message : String(webhookError),
+          errorType: webhookError instanceof Error ? webhookError.constructor.name : typeof webhookError
+        };
         // Continue even if webhook fails
       }
     }
 
+    // Determine if Odoo actually accepted the data
+    console.log('\n📊 STEP 7: DETERMINING SUCCESS STATUS');
+    const odooSucceeded = odooResponseData !== null && !('error' in (odooResponseData || {})) && odooResponseData !== undefined;
+    console.log('Odoo response data exists:', odooResponseData !== null);
+    console.log('Odoo response has error:', odooResponseData && 'error' in odooResponseData);
+    console.log('Odoo succeeded:', odooSucceeded);
+    
     const responseData = {
       success: true,
       taskId,
-      message: 'Data sent to Odoo',
+      message: odooSucceeded ? 'Data sent to Odoo' : 'Data sent to Odoo but may have failed',
       invoiceCount: invoices.length,
       payload: odooPayload, // Include payload for debugging/documentation
       odooResponse: odooResponseData, // Include Odoo's response if available
+      odooSucceeded, // Explicit flag for whether Odoo accepted the data
       attachmentInfo: attachmentMeta,
       warning: !process.env.S3_BUCKET ? 'S3 not configured. Using fallback storage (not recommended for production).' : undefined,
       configuration: {
@@ -365,10 +531,20 @@ export async function POST(request: NextRequest) {
       }
     };
 
-    console.log('\n🎯 FINAL RESPONSE TO CLIENT:');
+    console.log('\n🎯 STEP 8: FINAL RESPONSE TO CLIENT');
     console.log('Success:', responseData.success);
     console.log('Message:', responseData.message);
+    console.log('Odoo succeeded:', responseData.odooSucceeded);
+    console.log('Invoice count:', responseData.invoiceCount);
+    console.log('Attachments count:', responseData.attachmentInfo.length);
     console.log('Configuration:', responseData.configuration);
+    if (responseData.odooResponse) {
+      console.log('Odoo response summary:', {
+        hasError: 'error' in responseData.odooResponse,
+        status: responseData.odooResponse.status,
+        keys: Object.keys(responseData.odooResponse)
+      });
+    }
     console.log('='.repeat(50));
 
     return NextResponse.json(responseData);

@@ -59,6 +59,14 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       const res = await fetch('/api/invoices?take=200', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to load invoices');
       const data = await res.json();
+      
+      // If DB is not configured, API returns { warning: ..., items: [] }
+      // Don't clear existing invoices in this case - keep in-memory state
+      if (data.warning) {
+        console.warn('loadData: Database not configured, keeping in-memory invoices');
+        return data; // Return warning but don't update state
+      }
+      
       const invoices: Invoice[] = Array.isArray(data.items) ? data.items : [];
       set({ invoices });
       
@@ -267,8 +275,17 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
             } catch {}
           }
         }
+        // Only reload from DB if we actually persisted data
+        // Note: loadData() will return empty array if DB not configured, which would clear invoices
+        // So we check the response for a warning before applying
         if (anySucceeded) {
-          await get().loadData();
+          const reloadResult = await get().loadData();
+          // If DB is not configured, loadData returns { warning: ... } and doesn't clear invoices
+          // Only update if we got actual invoice data (not a warning)
+          if (reloadResult && !('warning' in reloadResult)) {
+            // Data was loaded successfully from DB
+          }
+          // Otherwise, keep the in-memory updates we already applied
         }
       } catch (err) {
         console.error('syncToOdoo database persist error (continuing with in-memory state):', err);
