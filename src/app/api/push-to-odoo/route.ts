@@ -186,27 +186,19 @@ export async function POST(request: NextRequest) {
           const uploadStart = Date.now();
           
           try {
-          const url = await uploadPdfBase64(key, base64, 'application/pdf');
+          // Upload to S3 first (we still need to store it)
+          await uploadPdfBase64(key, base64, 'application/pdf');
           const uploadTime = Date.now() - uploadStart;
           console.log(`      ✅ S3 upload successful in ${uploadTime}ms`);
-          console.log(`      S3 URL: ${url}`);
-          console.log(`      S3 URL length: ${url.length} chars`);
-          console.log(`      S3 URL expires: ${url.includes('X-Amz-Expires=') ? 'Yes (signed URL)' : 'No (public URL)'}`);
           
-          // Extract expiration time from signed URL if present
-          if (url.includes('X-Amz-Expires=')) {
-            const expiresMatch = url.match(/X-Amz-Expires=(\d+)/);
-            if (expiresMatch) {
-              const expiresSeconds = parseInt(expiresMatch[1], 10);
-              const expiresHours = (expiresSeconds / 3600).toFixed(1);
-              console.log(`      URL expiration: ${expiresSeconds}s (${expiresHours} hours)`);
-            }
-          }
+          // Return relative path for Odoo (Odoo will fetch from our BIP server)
+          // Our /api/attachments/[filename] endpoint will proxy to S3
+          const relativeUrl = `/api/attachments/${filename}`;
+          console.log(`      Relative URL for Odoo: ${relativeUrl}`);
           
-          // Use full S3 URL for Odoo (Odoo will fetch directly from S3)
-          // set url on last pushed meta
-          attachmentMeta[attachmentMeta.length - 1].url = url;
-          return url;
+          // Update attachment meta with relative URL
+          attachmentMeta[attachmentMeta.length - 1].url = relativeUrl;
+          return relativeUrl;
           } catch (s3Error) {
             const uploadTime = Date.now() - uploadStart;
             console.error(`      ❌ S3 upload failed after ${uploadTime}ms`);
