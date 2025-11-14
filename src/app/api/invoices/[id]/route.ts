@@ -1,13 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { extractKeyFromUrl, shouldUseSignedUrls } from '@/lib/s3';
+import { Prisma } from '@prisma/client';
 import type { InvoiceStatus } from '@prisma/client';
+
+const DB_WARNING = 'Database not available. Invoices are held in memory only.';
+
+function isDatabaseUnavailable(error: unknown): boolean {
+  if (
+    error instanceof Prisma.PrismaClientInitializationError ||
+    error instanceof Prisma.PrismaClientRustPanicError ||
+    error instanceof Prisma.PrismaClientUnknownRequestError
+  ) {
+    return true;
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ['P1000', 'P1001', 'P1002', 'P1003', 'P1008'].includes(error.code);
+  }
+
+  return false;
+}
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 // PATCH /api/invoices/[id] - update invoice core fields and line items
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!process.env.DATABASE_URL) {
+    console.warn('DATABASE_URL not configured, skipping invoice update');
+    return NextResponse.json({ warning: DB_WARNING });
+  }
+
   try {
     const { id } = await params;
     const data = await request.json();
@@ -39,9 +63,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
         include: { lineItems: true, attachments: true },
       });
     } catch (e: unknown) {
-      // Record not found
-      const message = e instanceof Error ? e.message : String(e);
-      if (message.includes('No record was found for an update')) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
         return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
       }
       throw e;
@@ -116,17 +138,30 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       : null;
     return NextResponse.json(normalized);
   } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      console.warn('Database unavailable, skipping invoice update');
+      return NextResponse.json({ warning: DB_WARNING });
+    }
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update invoice' }, { status: 500 });
   }
 }
 
 // DELETE /api/invoices/[id] - delete invoice and cascades
 export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  if (!process.env.DATABASE_URL) {
+    console.warn('DATABASE_URL not configured, skipping invoice delete');
+    return NextResponse.json({ warning: DB_WARNING });
+  }
+
   try {
     const { id } = await params;
     await prisma.invoice.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      console.warn('Database unavailable, skipping invoice delete');
+      return NextResponse.json({ warning: DB_WARNING });
+    }
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete invoice' }, { status: 500 });
   }
 }

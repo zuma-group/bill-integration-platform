@@ -15,7 +15,7 @@ interface InvoiceStore {
   // Actions
   loadData: () => Promise<{ warning?: string } | null>;
   setInvoices: (invoices: Invoice[]) => void;
-  addInvoice: (invoice: Invoice) => Promise<void>;
+  addInvoice: (invoice: Invoice) => Promise<Invoice | null>;
   updateInvoice: (id: string, updates: Partial<Invoice>) => Promise<void>;
   deleteInvoice: (id: string) => Promise<void>;
 
@@ -86,10 +86,14 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       const data = await res.json();
       const created: Invoice[] = Array.isArray(data.items) ? data.items : data.item ? [data.item] : [];
       if (created.length > 0) {
-        set({ invoices: [...get().invoices, created[0]] });
+        const createdInvoice = created[0];
+        set({ invoices: [...get().invoices, createdInvoice] });
+        return createdInvoice;
       }
+      return null;
     } catch (err) {
       console.error('addInvoice error:', err);
+      return null;
     }
   },
 

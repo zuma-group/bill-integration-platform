@@ -32,7 +32,7 @@ export default function InvoicesPage() {
         const res = await fetch('/api/invoices/pending?max=25', { cache: 'no-store' });
         const data = await res.json();
         if (res.ok && Array.isArray(data.invoices) && data.invoices.length > 0) {
-          data.invoices.forEach((inv: Invoice) => addInvoice(inv));
+          data.invoices.forEach((inv: Invoice) => void addInvoice(inv));
           setFeedback(`Auto-imported ${data.invoices.length} invoice(s).`);
         }
       } catch {}
@@ -179,7 +179,7 @@ export default function InvoicesPage() {
       for (const r of data.results || []) {
         for (const att of r.attachments || []) {
           for (const inv of (att.invoices || []) as Invoice[]) {
-            addInvoice(inv);
+            void addInvoice(inv);
             importedCount++;
           }
         }

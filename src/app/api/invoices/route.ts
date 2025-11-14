@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { extractKeyFromUrl, getObjectUrl, shouldUseSignedUrls } from '@/lib/s3';
+import { Prisma } from '@prisma/client';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,19 +15,37 @@ type UnknownLineItem = {
   [key: string]: unknown;
 };
 
+const DB_WARNING = 'Database not available. Invoices are held in memory only.';
+
+function isDatabaseUnavailable(error: unknown): boolean {
+  if (
+    error instanceof Prisma.PrismaClientInitializationError ||
+    error instanceof Prisma.PrismaClientRustPanicError ||
+    error instanceof Prisma.PrismaClientUnknownRequestError
+  ) {
+    return true;
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return ['P1000', 'P1001', 'P1002', 'P1003', 'P1008'].includes(error.code);
+  }
+
+  return false;
+}
+
 // GET /api/invoices - list invoices (basic pagination)
 export async function GET(request: NextRequest) {
-  try {
-    // Check if DATABASE_URL is configured
-    if (!process.env.DATABASE_URL) {
-      console.warn('DATABASE_URL not configured, returning empty invoice list');
-      return NextResponse.json({ 
-        total: 0, 
-        items: [],
-        warning: 'Database not configured. Invoices will not be persisted.' 
-      });
-    }
+  // Check if DATABASE_URL is configured
+  if (!process.env.DATABASE_URL) {
+    console.warn('DATABASE_URL not configured, returning empty invoice list');
+    return NextResponse.json({
+      total: 0,
+      items: [],
+      warning: DB_WARNING,
+    });
+  }
 
+  try {
     const url = new URL(request.url);
     const take = Math.min(200, Math.max(1, parseInt(url.searchParams.get('take') || '50', 10)));
     const skip = Math.max(0, parseInt(url.searchParams.get('skip') || '0', 10));
@@ -56,7 +75,12 @@ export async function GET(request: NextRequest) {
         if (firstAtt?.url) {
           const key = extractKeyFromUrl(firstAtt.url) || undefined;
           if (key) {
-            pdfUrl = await getObjectUrl(key);
+            try {
+              pdfUrl = await getObjectUrl(key);
+            } catch (err) {
+              console.error('Failed to resolve attachment URL from storage', err);
+              pdfUrl = firstAtt.url;
+            }
           } else {
             pdfUrl = firstAtt.url;
           }
@@ -77,38 +101,34 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ total, items: normalized });
   } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      console.warn('Database unavailable, returning empty invoice list');
+      return NextResponse.json({ total: 0, items: [], warning: DB_WARNING });
+    }
+
     console.error('Error fetching invoices:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: error instanceof Error ? error.message : 'Failed to list invoices',
-      details: process.env.NODE_ENV === 'development' ? error : undefined 
+      details: process.env.NODE_ENV === 'development' ? error : undefined,
     }, { status: 500 });
   }
 }
 
 // POST /api/invoices - create single or bulk invoices
 export async function POST(request: NextRequest) {
+  const body = await request.json();
+  const input = Array.isArray(body) ? body : Array.isArray(body.invoices) ? body.invoices : [body];
+
+  if (!Array.isArray(input) || input.length === 0) {
+    return NextResponse.json({ error: 'No invoices provided' }, { status: 400 });
+  }
+
+  if (!process.env.DATABASE_URL) {
+    console.warn('DATABASE_URL not configured, skipping invoice persistence');
+    return NextResponse.json({ count: input.length, items: input, warning: DB_WARNING });
+  }
+
   try {
-    // Check if DATABASE_URL is configured
-    if (!process.env.DATABASE_URL) {
-      console.warn('DATABASE_URL not configured, skipping invoice persistence');
-      const body = await request.json();
-      const input = Array.isArray(body) ? body : Array.isArray(body.invoices) ? body.invoices : [body];
-      
-      // Return the invoices as-is without saving
-      return NextResponse.json({ 
-        count: input.length, 
-        items: input,
-        warning: 'Database not configured. Invoices were not persisted.' 
-      });
-    }
-
-    const body = await request.json();
-    const input = Array.isArray(body) ? body : Array.isArray(body.invoices) ? body.invoices : [body];
-
-    if (!Array.isArray(input) || input.length === 0) {
-      return NextResponse.json({ error: 'No invoices provided' }, { status: 400 });
-    }
-
     const created = await prisma.$transaction(
       input.map((inv) =>
         prisma.invoice.create({
@@ -198,7 +218,12 @@ export async function POST(request: NextRequest) {
         if (firstAtt?.url) {
           const key = extractKeyFromUrl(firstAtt.url) || undefined;
           if (key) {
-            pdfUrl = await getObjectUrl(key);
+            try {
+              pdfUrl = await getObjectUrl(key);
+            } catch (err) {
+              console.error('Failed to resolve attachment URL from storage', err);
+              pdfUrl = firstAtt.url;
+            }
           } else {
             pdfUrl = firstAtt.url;
           }
@@ -219,10 +244,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ count: normalized.length, items: normalized });
   } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      console.warn('Database unavailable, skipping invoice persistence');
+      return NextResponse.json({ count: input.length, items: input, warning: DB_WARNING });
+    }
+
     console.error('Error creating invoices:', error);
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: error instanceof Error ? error.message : 'Failed to create invoices',
-      details: process.env.NODE_ENV === 'development' ? error : undefined 
+      details: process.env.NODE_ENV === 'development' ? error : undefined,
     }, { status: 500 });
   }
 }

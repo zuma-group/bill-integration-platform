@@ -115,7 +115,7 @@ export default function HomePage() {
         setCurrentBatch(processedInvoices);
         setShowSelector(true);
       } else {
-        processInvoices(processedInvoices);
+        await processInvoices(processedInvoices);
       }
 
       setSuccess(`Successfully extracted ${ocrData.invoiceCount} invoice(s)`);
@@ -152,14 +152,20 @@ export default function HomePage() {
     }
   };
 
-  const processInvoices = (invoices: Invoice[]) => {
-    invoices.forEach(addInvoice);
-    setExtractedInvoices(invoices);
+  const processInvoices = async (invoices: Invoice[]) => {
+    const persistedInvoices = await Promise.all(
+      invoices.map(async (invoice) => {
+        const created = await addInvoice(invoice);
+        return created ?? invoice;
+      })
+    );
+
+    setExtractedInvoices(persistedInvoices);
     setShowSelector(false);
   };
 
-  const handleSelectorProcess = (selectedInvoices: Invoice[]) => {
-    processInvoices(selectedInvoices);
+  const handleSelectorProcess = async (selectedInvoices: Invoice[]) => {
+    await processInvoices(selectedInvoices);
     setSuccess(`Processed ${selectedInvoices.length} invoice(s)`);
   };
 

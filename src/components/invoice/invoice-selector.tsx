@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 interface InvoiceSelectorProps {
   invoices: Invoice[];
-  onProcess: (selectedInvoices: Invoice[]) => void;
+  onProcess: (selectedInvoices: Invoice[]) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -31,7 +31,7 @@ export function InvoiceSelector({ invoices, onProcess, onCancel }: InvoiceSelect
   const handleProcess = () => {
     const selected = invoices.filter(inv => selectedInvoiceIds.has(inv.id || ''));
     if (selected.length > 0) {
-      onProcess(selected);
+      void onProcess(selected);
     }
   };
 
