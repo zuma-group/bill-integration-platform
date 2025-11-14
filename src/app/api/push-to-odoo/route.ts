@@ -125,6 +125,42 @@ export async function POST(request: NextRequest) {
       path?: string;
     }> = [];
 
+    // Ensure dates are in YYYY/MM/DD format (no time component)
+    const formatDateAsYyyySlashMmSlashDd = (input: string | Date | undefined | null): string => {
+      if (!input) return '';
+      const inputString = typeof input === 'string' ? input : input.toISOString();
+      const dateOnlyPart = inputString.split(/[T\s]/)[0];
+      const matched = dateOnlyPart.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+      if (matched) {
+        const year = matched[1];
+        const month = matched[2].padStart(2, '0');
+        const day = matched[3].padStart(2, '0');
+        return `${year}/${month}/${day}`;
+      }
+      const parsed = new Date(inputString);
+      if (!Number.isNaN(parsed.getTime())) {
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        return `${year}/${month}/${day}`;
+      }
+      return dateOnlyPart.replaceAll('-', '/');
+    };
+    
+    // Normalize currency to ISO codes expected by Odoo payload
+    const normalizeCurrency = (input: string | undefined | null): string => {
+      if (!input) return 'USD';
+      const c = String(input).trim().toUpperCase();
+      // Common representations
+      if (c === '$' || c === 'US$' || c === 'USD') return 'USD';
+      if (c === 'C$' || c === 'CA$' || c === 'CAD$' || c === 'CAD' || c === 'CDN$') return 'CAD';
+      // Fallback: if it's already a 3-letter code, keep it
+      const threeLetter = c.match(/^[A-Z]{3}$/);
+      if (threeLetter) return c;
+      // Otherwise default to USD
+      return 'USD';
+    };
+
     // Transform data to match original working format (async for S3 upload)
     console.log('\n🔄 STEP 4: TRANSFORMING INVOICES FOR ODOO');
     console.log(`Processing ${invoices.length} invoice(s)...`);
@@ -329,8 +365,6 @@ export async function POST(request: NextRequest) {
         console.log(`      Company ID: ${companyId} (PO: ${invoice.customerPoNumber || 'NONE'})`);
         
         const invoiceDate = normalizeToOdooDateFormat(invoice.invoiceDate);
-        const dueDate = normalizeToOdooDateFormat(invoice.dueDate);
-        const customerBlock = [invoice.customer.name, invoice.customer.address].filter(Boolean).join('\n');
         const attachmentEntry = [{
           filename,
           url: publicAttachmentUrl,
@@ -338,37 +372,38 @@ export async function POST(request: NextRequest) {
         }];
         
         const transformedInvoice = {
-          'Invoice-No': rawInvoiceNumber,
-          'Invoice-Date': invoiceDate || invoice.invoiceDate || '',
-          'Customer PO Number': invoice.customerPoNumber || '',
-          Customer: customerBlock,
-          'Customer No': '',
-          Vendor: invoice.vendor.name,
-          'Vendor Address': invoice.vendor.address || '',
-          'Vendor No': invoice.vendor.taxId || '',
-          'Bill-To': invoice.customer.name || '',
-          'Bill-To Address': invoice.customer.address || '',
-          'Payment Terms': invoice.paymentTerms || 'NET 30 DAYS',
-          'Subtotal': subtotalValue.toFixed(2),
-          'Tax Amount': taxTotalValue.toFixed(2),
-          'Total Amount': totalAmountValue.toFixed(2),
-          'invoice-or-credit': 'INVOICE' as const,
-          Currency: invoice.currency || 'USD',
+          invoiceNumber: rawInvoiceNumber,
+          invoiceDate: formatDateAsYyyySlashMmSlashDd(invoice.invoiceDate || invoiceDate || ''),
+          customerPoNumber: invoice.customerPoNumber || '',
+          vendor: {
+            name: invoice.vendor.name,
+            address: invoice.vendor.address || '',
+            taxId: invoice.vendor.taxId || '',
+            email: invoice.vendor.email ?? null,
+            phone: invoice.vendor.phone ?? null
+          },
+          customer: {
+            name: invoice.customer.name,
+            address: invoice.customer.address || ''
+          },
+          paymentTerms: invoice.paymentTerms || 'Net 30 days',
+          subtotal: subtotalValue,
+          taxAmount: taxTotalValue,
+          total: totalAmountValue,
+          taxType: invoice.taxType || (taxes[0]?.tax_type || ''),
+          currency: normalizeCurrency(invoice.currency),
           company_id: companyId,
           lines,
           taxes,
           attachments: attachmentEntry,
-          'Customer Order Date': dueDate || '',
-          'Page No': invoice.pageNumber ? String(invoice.pageNumber) : '',
-          'Sales Order No': invoice.customerPoNumber || '',
+          pageNumber: typeof invoice.pageNumber === 'number' ? invoice.pageNumber : 1
         };
         
         console.log(`    ✅ Invoice ${index + 1} transformation complete`);
-        console.log(`      Invoice number: ${transformedInvoice['Invoice-No']}`);
+        console.log(`      Invoice number: ${transformedInvoice.invoiceNumber}`);
         console.log(`      Company ID: ${transformedInvoice.company_id}`);
         console.log(`      Lines: ${transformedInvoice.lines.length}`);
         console.log(`      Attachments: ${transformedInvoice.attachments.length}`);
-        console.log(`      Attachment URL: ${transformedInvoice.attachments[0]?.url?.substring(0, 100)}...`);
         
         return transformedInvoice;
     }));
@@ -380,18 +415,7 @@ export async function POST(request: NextRequest) {
     console.log('\n📦 STEP 5: PAYLOAD CONSTRUCTION');
     const payloadStr = JSON.stringify(odooPayload);
     console.log(`Payload size: ${(payloadStr.length / 1024).toFixed(2)} KB`);
-    console.log(`Payload structure:`, {
-      invoicesCount: odooPayload.invoices.length,
-      firstInvoice: odooPayload.invoices[0]
-        ? {
-            invoiceNumber: odooPayload.invoices[0]['Invoice-No'],
-            company_id: odooPayload.invoices[0].company_id,
-            linesCount: odooPayload.invoices[0].lines?.length,
-            attachmentsCount: odooPayload.invoices[0].attachments?.length,
-            attachmentUrl: odooPayload.invoices[0].attachments?.[0]?.url?.substring(0, 100)
-          }
-        : null
-    });
+    
 
     // Forward to Odoo webhook (when configured)
     let odooResponseData = null;
@@ -428,7 +452,7 @@ export async function POST(request: NextRequest) {
         console.log('\n🚀 STEP 6: SENDING TO ODOO WEBHOOK');
         console.log('Webhook URL:', webhookUrl);
         console.log('Number of invoices:', odooPayload.invoices.length);
-        console.log('Invoice numbers:', odooPayload.invoices.map(inv => inv['Invoice-No']));
+        console.log('Invoice numbers:', odooPayload.invoices.map(inv => inv.invoiceNumber));
 
         // Odoo expects JSON with 'invoices' array - send full payload
         const odooRequestPayload = odooPayload;
