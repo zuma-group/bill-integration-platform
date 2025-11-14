@@ -51,7 +51,9 @@ export async function getSignedObjectUrl(key: string, expiresSeconds?: number): 
   const Bucket = process.env.S3_BUCKET;
   const Key = key;
   const command = new GetObjectCommand({ Bucket, Key, ResponseContentType: 'application/pdf' });
-  const expiresIn = Math.max(60, Math.min(60 * 60 * 24, Number(expiresSeconds || process.env.S3_SIGNED_URL_EXPIRES || 900)));
+  // Default to 7 days (604800 seconds) for Odoo to have plenty of time to fetch
+  // Odoo might fetch asynchronously, so we need longer expiration
+  const expiresIn = Math.max(60, Math.min(60 * 60 * 24 * 7, Number(expiresSeconds || process.env.S3_SIGNED_URL_EXPIRES || 604800)));
   return await getSignedUrl(s3, command, { expiresIn });
 }
 

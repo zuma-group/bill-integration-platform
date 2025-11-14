@@ -190,25 +190,23 @@ export async function POST(request: NextRequest) {
           const uploadTime = Date.now() - uploadStart;
           console.log(`      ✅ S3 upload successful in ${uploadTime}ms`);
           console.log(`      S3 URL: ${url}`);
+          console.log(`      S3 URL length: ${url.length} chars`);
+          console.log(`      S3 URL expires: ${url.includes('X-Amz-Expires=') ? 'Yes (signed URL)' : 'No (public URL)'}`);
           
-          // Convert S3 URL to relative path for Odoo (Odoo expects relative paths like /api/attachments/filename.pdf)
-          // Odoo will fetch from BIP server using NEXT_PUBLIC_BASE_URL + relative path
-          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
-          let relativeUrl: string;
-          
-          if (url.startsWith(baseUrl)) {
-            // If S3 URL includes base URL, extract relative path
-            relativeUrl = url.replace(baseUrl, '');
-          } else {
-            // Otherwise, use the attachments endpoint
-            relativeUrl = `/api/attachments/${filename}`;
+          // Extract expiration time from signed URL if present
+          if (url.includes('X-Amz-Expires=')) {
+            const expiresMatch = url.match(/X-Amz-Expires=(\d+)/);
+            if (expiresMatch) {
+              const expiresSeconds = parseInt(expiresMatch[1], 10);
+              const expiresHours = (expiresSeconds / 3600).toFixed(1);
+              console.log(`      URL expiration: ${expiresSeconds}s (${expiresHours} hours)`);
+            }
           }
           
-          console.log(`      Relative URL for Odoo: ${relativeUrl}`);
-          
-          // set url on last pushed meta (store the relative URL)
-          attachmentMeta[attachmentMeta.length - 1].url = relativeUrl;
-          return relativeUrl;
+          // Use full S3 URL for Odoo (Odoo will fetch directly from S3)
+          // set url on last pushed meta
+          attachmentMeta[attachmentMeta.length - 1].url = url;
+          return url;
           } catch (s3Error) {
             const uploadTime = Date.now() - uploadStart;
             console.error(`      ❌ S3 upload failed after ${uploadTime}ms`);
@@ -498,7 +496,7 @@ export async function POST(request: NextRequest) {
           console.error('    ❌ Odoo rejected the request');
         } else {
           const responseText = await odooResponse.text();
-          console.log('\n    ✅ ODOO WEBHOOK SUCCESS');
+          console.log('\n    ✅ ODOO WEBHOOK SUCCESS (HTTP 200)');
           console.log('    Response body length:', responseText.length, 'chars');
           console.log('    Response body (first 500 chars):', responseText.substring(0, 500));
           if (responseText.length > 500) {
@@ -510,6 +508,32 @@ export async function POST(request: NextRequest) {
             console.log('    ✅ Parsed as JSON successfully');
             console.log('    Parsed response keys:', Object.keys(odooResponseData));
             console.log('    Parsed response:', JSON.stringify(odooResponseData, null, 2).substring(0, 1000));
+            
+            // Check for JSON-RPC error format (Odoo uses JSON-RPC)
+            if (odooResponseData.jsonrpc && odooResponseData.error) {
+              console.error('    ❌ JSON-RPC error detected:', odooResponseData.error);
+              odooResponseData = { 
+                error: odooResponseData.error,
+                jsonrpc: odooResponseData.jsonrpc,
+                id: odooResponseData.id
+              };
+            } else if (odooResponseData.jsonrpc && odooResponseData.result) {
+              // Check if result contains an error message
+              if (odooResponseData.result.message && 
+                  (odooResponseData.result.message.toLowerCase().includes('not found') ||
+                   odooResponseData.result.message.toLowerCase().includes('error') ||
+                   odooResponseData.result.message.toLowerCase().includes('fail'))) {
+                console.error('    ⚠️ JSON-RPC result indicates failure:', odooResponseData.result.message);
+                odooResponseData = {
+                  error: odooResponseData.result.message || odooResponseData.result,
+                  jsonrpc: odooResponseData.jsonrpc,
+                  id: odooResponseData.id,
+                  result: odooResponseData.result
+                };
+              } else {
+                console.log('    ✅ JSON-RPC result indicates success');
+              }
+            }
           } catch (parseError) {
             console.log('    ⚠️ Response is not JSON, using raw text');
             console.log('    Parse error:', parseError instanceof Error ? parseError.message : parseError);
@@ -536,10 +560,23 @@ export async function POST(request: NextRequest) {
 
     // Determine if Odoo actually accepted the data
     console.log('\n📊 STEP 7: DETERMINING SUCCESS STATUS');
-    const odooSucceeded = odooResponseData !== null && !('error' in (odooResponseData || {})) && odooResponseData !== undefined;
+    const hasError = odooResponseData && (
+      'error' in odooResponseData ||
+      (odooResponseData.jsonrpc && odooResponseData.error) ||
+      (odooResponseData.result && 
+       typeof odooResponseData.result === 'object' &&
+       odooResponseData.result.message &&
+       (odooResponseData.result.message.toLowerCase().includes('not found') ||
+        odooResponseData.result.message.toLowerCase().includes('error') ||
+        odooResponseData.result.message.toLowerCase().includes('fail')))
+    );
+    const odooSucceeded = odooResponseData !== null && !hasError && odooResponseData !== undefined;
     console.log('Odoo response data exists:', odooResponseData !== null);
-    console.log('Odoo response has error:', odooResponseData && 'error' in odooResponseData);
+    console.log('Odoo response has error:', hasError);
     console.log('Odoo succeeded:', odooSucceeded);
+    if (hasError) {
+      console.error('❌ Odoo reported an error or failure in the response');
+    }
     
     const responseData = {
       success: true,
