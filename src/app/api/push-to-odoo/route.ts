@@ -186,13 +186,29 @@ export async function POST(request: NextRequest) {
           const uploadStart = Date.now();
           
           try {
-            const url = await uploadPdfBase64(key, base64, 'application/pdf');
-            const uploadTime = Date.now() - uploadStart;
-            console.log(`      ✅ S3 upload successful in ${uploadTime}ms`);
-            console.log(`      URL: ${url}`);
-            // set url on last pushed meta
-            attachmentMeta[attachmentMeta.length - 1].url = url;
-            return url;
+          const url = await uploadPdfBase64(key, base64, 'application/pdf');
+          const uploadTime = Date.now() - uploadStart;
+          console.log(`      ✅ S3 upload successful in ${uploadTime}ms`);
+          console.log(`      S3 URL: ${url}`);
+          
+          // Convert S3 URL to relative path for Odoo (Odoo expects relative paths like /api/attachments/filename.pdf)
+          // Odoo will fetch from BIP server using NEXT_PUBLIC_BASE_URL + relative path
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || '';
+          let relativeUrl: string;
+          
+          if (url.startsWith(baseUrl)) {
+            // If S3 URL includes base URL, extract relative path
+            relativeUrl = url.replace(baseUrl, '');
+          } else {
+            // Otherwise, use the attachments endpoint
+            relativeUrl = `/api/attachments/${filename}`;
+          }
+          
+          console.log(`      Relative URL for Odoo: ${relativeUrl}`);
+          
+          // set url on last pushed meta (store the relative URL)
+          attachmentMeta[attachmentMeta.length - 1].url = relativeUrl;
+          return relativeUrl;
           } catch (s3Error) {
             const uploadTime = Date.now() - uploadStart;
             console.error(`      ❌ S3 upload failed after ${uploadTime}ms`);
@@ -381,25 +397,36 @@ export async function POST(request: NextRequest) {
     let odooResponseData = null;
 
     console.log('\n🌐 WEBHOOK CONFIGURATION:');
-    console.log('ODOO_WEBHOOK_URL:', process.env.ODOO_WEBHOOK_URL || 'NOT SET');
-    console.log('ODOO_API_KEY:', process.env.ODOO_API_KEY ? 'SET (hidden)' : 'NOT SET');
+    const webhookUrl = process.env.ODOO_WEBHOOK_URL;
+    const apiKey = process.env.ODOO_API_KEY;
+    console.log('ODOO_WEBHOOK_URL:', webhookUrl || 'NOT SET');
+    console.log('ODOO_WEBHOOK_URL length:', webhookUrl?.length || 0);
+    console.log('ODOO_WEBHOOK_URL first 50 chars:', webhookUrl?.substring(0, 50) || 'N/A');
+    console.log('ODOO_API_KEY:', apiKey ? 'SET (hidden)' : 'NOT SET');
+    console.log('All env vars with ODOO:', Object.keys(process.env).filter(k => k.includes('ODOO')));
 
     // Make Odoo webhook required
-    if (!process.env.ODOO_WEBHOOK_URL) {
+    if (!webhookUrl) {
       console.error('\n❌ CRITICAL: ODOO_WEBHOOK_URL is not configured');
+      console.error('Available env vars:', Object.keys(process.env).sort());
       return NextResponse.json(
         {
           error: 'Odoo webhook is not configured. Please set ODOO_WEBHOOK_URL environment variable.',
-          details: 'Invoice extraction requires Odoo integration to be set up properly.'
+          details: 'Invoice extraction requires Odoo integration to be set up properly.',
+          debug: {
+            webhookUrlExists: !!webhookUrl,
+            webhookUrlLength: webhookUrl?.length || 0,
+            allOdooEnvVars: Object.keys(process.env).filter(k => k.includes('ODOO'))
+          }
         },
         { status: 500 }
       );
     }
 
-    if (process.env.ODOO_WEBHOOK_URL) {
+    if (webhookUrl) {
       try {
         console.log('\n🚀 STEP 6: SENDING TO ODOO WEBHOOK');
-        console.log('Webhook URL:', process.env.ODOO_WEBHOOK_URL);
+        console.log('Webhook URL:', webhookUrl);
         console.log('Number of invoices:', odooPayload.invoices.length);
         console.log('Invoice numbers:', odooPayload.invoices.map(inv => inv.invoiceNumber));
 
@@ -420,7 +447,7 @@ export async function POST(request: NextRequest) {
           'X-API-Key': headers['X-API-Key'] ? 'SET (hidden)' : 'NOT SET'
         });
         console.log('    Method: POST');
-        console.log('    URL:', process.env.ODOO_WEBHOOK_URL);
+        console.log('    URL:', webhookUrl);
         console.log('    Payload invoices count:', odooRequestPayload.invoices.length);
         console.log('    First invoice attachment URL:', odooRequestPayload.invoices[0]?.attachments?.[0]?.url?.substring(0, 150));
         
@@ -430,7 +457,7 @@ export async function POST(request: NextRequest) {
         console.log('\n  📡 STEP 6.2: SENDING REQUEST TO ODOO');
         const requestStart = Date.now();
         
-        const odooResponse = await fetch(process.env.ODOO_WEBHOOK_URL, {
+        const odooResponse = await fetch(webhookUrl, {
           method: 'POST',
           headers,
           body: requestBody
@@ -525,9 +552,15 @@ export async function POST(request: NextRequest) {
       attachmentInfo: attachmentMeta,
       warning: !process.env.S3_BUCKET ? 'S3 not configured. Using fallback storage (not recommended for production).' : undefined,
       configuration: {
-        webhookConfigured: !!process.env.ODOO_WEBHOOK_URL,
-        apiKeyConfigured: !!process.env.ODOO_API_KEY,
-        s3Configured: !!process.env.S3_BUCKET
+        webhookConfigured: !!webhookUrl,
+        webhookUrl: webhookUrl ? `${webhookUrl.substring(0, 50)}...` : undefined, // Show first 50 chars for debugging
+        apiKeyConfigured: !!apiKey,
+        s3Configured: !!process.env.S3_BUCKET,
+        debug: {
+          webhookUrlExists: !!webhookUrl,
+          webhookUrlLength: webhookUrl?.length || 0,
+          nodeEnv: process.env.NODE_ENV
+        }
       }
     };
 
@@ -561,22 +594,45 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET endpoint for retrieving task data (if needed)
+// GET endpoint for retrieving task data (if needed) or connection test
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const taskId = searchParams.get('taskId');
 
+  const webhookUrl = process.env.ODOO_WEBHOOK_URL;
+  const apiKey = process.env.ODOO_API_KEY;
+
+  // If no taskId, this is a connection test
   if (!taskId) {
-    return NextResponse.json(
-      { error: 'taskId parameter is required' },
-      { status: 400 }
-    );
+    return NextResponse.json({
+      message: 'Connection test completed',
+      webhookConfigured: !!webhookUrl,
+      webhookUrl: webhookUrl ? `${webhookUrl.substring(0, 50)}...` : undefined,
+      apiKeyConfigured: !!apiKey,
+      s3Configured: !!process.env.S3_BUCKET,
+      debug: {
+        webhookUrlExists: !!webhookUrl,
+        webhookUrlLength: webhookUrl?.length || 0,
+        nodeEnv: process.env.NODE_ENV,
+        allOdooEnvVars: Object.keys(process.env).filter(k => k.includes('ODOO'))
+      },
+      info: {
+        message: 'This is a push-based integration. Invoice data is sent directly to Odoo via POST request.',
+        taskId: 'diagnostic',
+        info: 'To send invoices to Odoo, use POST /api/push-to-odoo with invoice data and PDF.'
+      }
+    });
   }
 
   // Since we're not using a database, return a message explaining the workflow
   return NextResponse.json({
     message: 'This is a push-based integration. Invoice data is sent directly to Odoo via POST request.',
     taskId,
-    info: 'To send invoices to Odoo, use POST /api/push-to-odoo with invoice data and PDF.'
+    info: 'To send invoices to Odoo, use POST /api/push-to-odoo with invoice data and PDF.',
+    configuration: {
+      webhookConfigured: !!webhookUrl,
+      apiKeyConfigured: !!apiKey,
+      s3Configured: !!process.env.S3_BUCKET
+    }
   });
 }

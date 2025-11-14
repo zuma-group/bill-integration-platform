@@ -189,6 +189,12 @@ export default function HomePage() {
     invoicesToPush: Invoice[],
     options?: { pdfBase64Override?: string; showModal?: boolean }
   ) => {
+    console.log('🚀 [CLIENT] Starting push to Odoo...');
+    console.log('📋 [CLIENT] Invoices to push:', invoicesToPush.length);
+    invoicesToPush.forEach((inv, idx) => {
+      console.log(`  Invoice ${idx + 1}: ${inv.invoiceNumber || 'NO_NUMBER'} (ID: ${inv.id || 'NO_ID'})`);
+    });
+    
     if (invoicesToPush.length === 0) {
       throw new Error('No invoices selected for Odoo push.');
     }
@@ -197,10 +203,21 @@ export default function HomePage() {
       ?? originalPdfBase64
       ?? invoicesToPush[0]?.pdfBase64;
 
+    console.log('📄 [CLIENT] PDF payload status:', {
+      hasOverride: !!options?.pdfBase64Override,
+      hasOriginalPdfBase64: !!originalPdfBase64,
+      hasInvoicePdfBase64: !!invoicesToPush[0]?.pdfBase64,
+      finalHasPdf: !!pdfPayload,
+      pdfSize: pdfPayload ? `${(pdfPayload.length * 0.75 / 1024).toFixed(2)} KB` : 'N/A'
+    });
+
     if (!pdfPayload) {
       throw new Error('Missing PDF data for the selected invoice. Re-upload the original file before pushing to Odoo.');
     }
 
+    console.log('📤 [CLIENT] Sending request to /api/push-to-odoo...');
+    const requestStart = Date.now();
+    
     // Send as JSON (FormData has issues on Vercel)
     const response = await fetch('/api/push-to-odoo', {
       method: 'POST',
@@ -211,8 +228,27 @@ export default function HomePage() {
       }),
     });
 
+    const requestTime = Date.now() - requestStart;
+    console.log(`⏱️ [CLIENT] Request completed in ${requestTime}ms`);
+    console.log('📥 [CLIENT] Response status:', response.status, response.statusText);
+    console.log('📥 [CLIENT] Response headers:', Object.fromEntries(response.headers.entries()));
+
     const result = await response.json();
-    console.log('📥 Response from server:', result);
+    console.log('📥 [CLIENT] Response from server:', result);
+    console.log('🔧 [CLIENT] Configuration:', result.configuration);
+    console.log('✅ [CLIENT] Odoo succeeded:', result.odooSucceeded);
+    
+    if (result.odooResponse) {
+      console.log('📡 [CLIENT] Odoo response:', result.odooResponse);
+      if ('error' in result.odooResponse) {
+        console.error('❌ [CLIENT] Odoo error:', result.odooResponse.error);
+        console.error('❌ [CLIENT] Odoo status:', result.odooResponse.status, result.odooResponse.statusText);
+      }
+    }
+    
+    if (result.attachmentInfo) {
+      console.log('📎 [CLIENT] Attachment info:', result.attachmentInfo);
+    }
 
     if (!response.ok) {
       throw new Error(result.error || 'Failed to push to Odoo');
@@ -385,11 +421,22 @@ export default function HomePage() {
       console.log('Test response:', result);
 
       // Show connection info
+      console.log('🔍 [CLIENT] Connection test result:', result);
       const testInfo = {
-        message: 'Connection test completed',
-        webhookConfigured: result.configuration?.webhookConfigured || false,
-        info: result
+        message: result.message || 'Connection test completed',
+        webhookConfigured: result.webhookConfigured || result.configuration?.webhookConfigured || false,
+        configuration: {
+          webhookConfigured: result.webhookConfigured || result.configuration?.webhookConfigured || false,
+          webhookUrl: result.webhookUrl || result.configuration?.webhookUrl,
+          apiKeyConfigured: result.apiKeyConfigured || result.configuration?.apiKeyConfigured || false,
+          s3Configured: result.s3Configured || result.configuration?.s3Configured || false,
+          debug: result.debug || result.configuration?.debug
+        },
+        info: result.info || result
       };
+      
+      console.log('🔍 [CLIENT] Webhook configured:', testInfo.webhookConfigured);
+      console.log('🔍 [CLIENT] Debug info:', testInfo.configuration?.debug);
 
       setOdooResponseDetails(testInfo);
       setShowResponseModal(true);
